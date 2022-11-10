@@ -1,0 +1,13 @@
+[Unit]
+Description=Trackpoint Keyboard Sensitivity
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+
+[Service]
+RemainAfterExit=yes
+ExecStart=/usr/bin/bash /usr/local/bin/trackpoint
+User=
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=default.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target

@@ -1,0 +1,17 @@
+#!/bin/bash
+#script that checks for trackpoint keyboard in xinput list. Modified from https://stackoverflow.com/questions/18755967/how-to-make-a-program-that-finds-ids-of-xinput-devices-and-sets-xinput-some-set/18756948#18756948
+#change the argument in awk search to change it for your use case
+
+sleep 10
+trackpoint=$(xinput --list | awk -v search="ThinkPad Compact USB Keyboard with TrackPoint" \
+    '$0 ~ search {match($0, /id=[0-9]+/);\
+                  if (RSTART) \
+                    print substr($0, RSTART+3, RLENGTH-3)\
+                 }'\
+     )
+
+for i in $trackpoint
+do
+    xinput --set-prop $i 'libinput Accel Speed' -0.75 #change to whatever speed you like
+done
+echo "Done!"
