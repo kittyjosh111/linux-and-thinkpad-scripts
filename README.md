@@ -12,3 +12,10 @@ The scripts were used on the following distros:
 The scripts were used on the following devices:
 1) Thinkpad P16 (Intel) Gen 1 (2022)
 2) Thinkpad X1 Yoga (OLED) Gen 1 (2016)
+
+# problems fixed
+
+The scripts attempt to address the following issues:
+
+1) Trackpoint sensitivity too high on Lenovo trackpoint keybaords
+2) X11 Screen flickering on an X1 Yoga
