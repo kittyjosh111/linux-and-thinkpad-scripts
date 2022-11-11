@@ -10,7 +10,7 @@ The scripts were used on the following distros:
 1) Fedora Linux 36
 
 The scripts were used on the following devices:
-1) Thinkpad P16 (Intel) Gen 1 (2022)
+1) Thinkpad P16s (Intel) Gen 1 (2022)
 2) Thinkpad X1 Yoga (OLED) Gen 1 (2016)
 
 # problems fixed
