@@ -8,6 +8,7 @@ General scripts will be under the general folder. If certain scripts were specif
 
 The scripts were used on the following distros:
 1) Fedora Linux 36
+2) Fedora Linux 37
 
 The scripts were used on the following devices:
 1) Thinkpad P16s (Intel) Gen 1 (2022)
@@ -19,3 +20,4 @@ The scripts attempt to address the following issues:
 
 1) Trackpoint sensitivity too high on Lenovo trackpoint keybaords
 2) X11 Screen flickering on an X1 Yoga
+3) Touchscreen right clicks
