@@ -1,4 +1,4 @@
-# linux-thinkpad-scripts
+# linux-and-thinkpad-scripts
 These are custom scripts I have used when running linux, as well as some specific fixes to Thinkpad problems. Seeing that there may be a day I need to reference these scripts or redeploy them on a new computer, this repository will hold the various scripts I have found useful.
 
 The folder name indicates what script or guide is contained within. If certain scripts were specific to one device, the folder name will be the name of the device, categorized by model. 
