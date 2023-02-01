@@ -1,0 +1,1 @@
+seems that when rotating the screen in tablet mode, sometimes Xorg crashes. Logs say ```Xorg crashed in _nl_load_domain.cold()``` It also seemed to point to xorg-x11-drv-wacom as the culprit. Uninstalled to see what effect it has, yet it seems that the wacom tablet options are still recognized.
