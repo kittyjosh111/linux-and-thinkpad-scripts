@@ -1,0 +1,1 @@
+Script to convert different video files in a directory to a file format readable by Da Vinci Reslove's free linux version. Will create a new folder named "bin" to store converted files. You can pass in a different filepath as an argument to the script.
