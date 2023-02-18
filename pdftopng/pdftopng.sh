@@ -7,7 +7,7 @@ cd "$1" #allows for user to pass in filepaths that contain the videos
 
 #vars
 formatDate=$(date +'%m-%d-%Y') #make the subfolder name unique by prefixing with formatDate
-search="*.mp4 *.mov *.mkv *.insv" #file extensions we search for. Modify as needed
+search="*.pdf" #file extensions we search for. Modify as needed
 
 echo "Script starting, please wait..."
 mkdir output_$formatDate #creates subfolder to house the converted videos and log file
