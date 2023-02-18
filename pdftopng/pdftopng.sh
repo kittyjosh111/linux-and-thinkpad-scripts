@@ -16,9 +16,9 @@ shopt -s nocaseglob #begin ignore capitalization
 for file in $search
 do 
     #actual conversion
-    pdftoppm "$file" "$file" -png
-    mv "$file"-1.png bin/
+    pdftoppm "$file" "$file" -png 2>> output_$formatDate/log.log
 done
+mv *.png output_$formatDate
 shopt -u nocaseglob #end ignore capitalization
 
 echo "Script finished. Files can be found in output_$formatDate/."
