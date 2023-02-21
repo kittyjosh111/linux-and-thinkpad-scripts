@@ -10,11 +10,13 @@ which=$(which $search 2> /dev/null)
 if [ ! -z "$which" ];then
     #if else statement to determine whether to spawn process or destroy it
     if [ ! -z "$pid" ];then
+        echo "toggling $search off..."
         for each in $pid
         do 
             kill "$each"
         done
     else
+        echo "toggling $search on..."
         $search </dev/null &>/dev/null & #don't keep the program running in terminal
     fi
 else
