@@ -1,5 +1,5 @@
 #!/bin/bash
-# This is a script to display info on the media currently playing. Inspired by some "nowplaying" extension found on GNOME. 
+# This is a script to display info on the media currently playing. Inspired by the Media Controls extension found for GNOME. 
 # RELIES ON PLAYERCTL. Install it from your favorite package manager.
 # In genmon prefs, set period to 0 for instant icon changes.
 
@@ -14,15 +14,17 @@ separator="|" # This is a separator character placed between various metadata st
 #CLICK="playerctl play-pause"
 #echo -e "<textclick>$CLICK</textclick>"
 
-#logic behind which icon to show depending on output of amixer. Awk is used to filter and search for the term off in microphone settings.
+#logic behind getting the artist and title of the media being played
 if [ `playerctl status` != Stopped ]; then
   metadata=$(echo -e $(playerctl metadata artist) $separator $(playerctl metadata title)) #This pulls metadata using the playerctl command.
   formatted=$(echo -e $metadata | cut -c 1-$length) #This shortens the output from playerctl 
     if [ -z "$length" ]; then
       echo -e $formatted
     else
-      echo -e $formatted  ". . ." # This adds on the "..." to it the overall output
+      echo -e $formatted  ". . . " # This adds on the "..." to it the overall output
     fi
+else
+  echo ""
 fi
 
 #######################################################################
