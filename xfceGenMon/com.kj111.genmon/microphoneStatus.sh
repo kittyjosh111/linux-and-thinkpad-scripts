@@ -1,5 +1,6 @@
 #!/bin/bash
-#In genmon prefs, set period to 0 for instant icon changes.
+# This is a script to monitor if the microphone is on or off. Think about GNOME's microphone indicator or something. The icon changes when the microphone is on or off. To specify, on and off refer to if the microphone has been muted through software or not.
+# In genmon prefs, set period to 0 for instant icon changes.
 
 #genmon variable to add a clicking action
 CLICK="amixer -D pulse set Capture toggle"
