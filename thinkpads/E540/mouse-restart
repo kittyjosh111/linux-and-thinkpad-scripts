@@ -1,0 +1,3 @@
+#!/bin/bash
+sudo modprobe -r rmi_smbus
+sudo modprobe rmi_smbus

@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart trackpoint and trackpad after resume
+After=suspend.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bash /usr/local/bin/mouse-restart
+
+[Install]
+WantedBy=suspend.target
