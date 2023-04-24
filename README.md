@@ -9,10 +9,12 @@ The folder name indicates what script or guide is contained within. If certain s
 The scripts were used on the following distros:
 1) Fedora Linux 36
 2) Fedora Linux 37
+3) Fedora Linux 38
 
 The scripts were used on the following devices:
 1) Thinkpad P16s (Intel) Gen 1 (2022)
 2) Thinkpad X1 Yoga (OLED) Gen 1 (2016)
+3) Thinkpda E540 (Intel) i5 4200M (2014)
 
 # various scripts
 
@@ -28,3 +30,4 @@ The scripts attempt to address the following issues:
 1) Trackpoint sensitivity too high on Lenovo trackpoint keyboards
 2) X11 Screen flickering on an X1 Yoga
 3) Touchscreen right clicks
+4) Trackpoint and trackpad being disabled upon resuming from sleep in linux
