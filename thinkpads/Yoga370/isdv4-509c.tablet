@@ -1,7 +1,7 @@
 # this is for the Wacom pen + touchscreen as found in some versions of the Lenovo ThinkPad Yoga 370. lusub puts the id as 056a:509c
 
 [Device]
-Name=Wacom ISDv4 509D
+Name=Wacom ISDv4 509C
 ModelName=
 DeviceMatch=usb:056a:509c
 Class=ISDV4

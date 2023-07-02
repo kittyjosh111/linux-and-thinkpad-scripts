@@ -1,0 +1,12 @@
+#!/bin/bash
+#script to determine whether AC is attached, and if so, trigger system76-power and GNOME animations
+AC=$(acpi -V | grep "off-line")
+USERNAME=
+
+if [ ! -z "$AC" ];then
+    system76-power profile battery
+    su - $USERNAME -c "gsettings set org.gnome.desktop.interface enable-animations false"
+else
+    system76-power profile performance
+    su - $USERNAME -c "gsettings set org.gnome.desktop.interface enable-animations true"
+fi

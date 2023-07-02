@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart system76pm
+After=suspend.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bash /usr/local/bin/system76pm
+
+[Install]
+WantedBy=suspend.target
