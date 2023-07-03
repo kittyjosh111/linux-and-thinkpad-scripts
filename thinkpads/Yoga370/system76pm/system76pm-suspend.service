@@ -4,7 +4,8 @@ After=suspend.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/bash /usr/local/bin/system76pm
+ExecStart=/usr/bin/bash /usr/local/bin/system76pm-suspend
+Restart=on-failure
 
 [Install]
 WantedBy=suspend.target

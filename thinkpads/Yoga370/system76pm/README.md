@@ -18,6 +18,8 @@ Thus, let's write a script to toggle the battery and performance modes based on 
 
 - Move ```system76pm``` to /usr/local/bin. Edit it and assign your username to the USERNAME variable. Give it executable perms.
 
-- Move ```system76pm.service``` to /etc/systemd/system/. Enable it. This file makes sure to reload system76pm after waking from suspend, else it defaults back to balanced mode.
+- Move ```system76pm-suspend``` to /usr/local/bin. Give it executable perms.
+
+- Move ```system76pm-suspend.service``` to /etc/systemd/system/. Enable it. This file makes sure to reload system76pm after waking from suspend, else it defaults back to balanced mode.
 
 - Move ```50-system76pm.rules``` to /etc/udev/rules.d/. Restart udev or your device. This allows system76pm to run on AC connection or disconnection.
