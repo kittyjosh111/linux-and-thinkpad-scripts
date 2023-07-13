@@ -1,0 +1,16 @@
+#this is for the Wacom pen + touchscreen gor the X1 Yoga OLED (2016). lusub puts the id as 056a:5087
+
+[Device]
+Name=Wacom ISDv4 5087
+ModelName=Thinkpad X1 Yoga Gen 1 OLED Panel
+DeviceMatch=usb:056a:5087
+Class=ISDV4
+Width=12
+Height=7
+IntegratedIn=Display;System
+Styli=@isdv4-aes;
+
+[Features]
+Stylus=true
+Touch=true
+Buttons=0
