@@ -2,8 +2,8 @@
 state=$(gnome-extensions info disable-gestures-2021@verycrazydog.gmail.com | grep State | cut -c 10-)
 if [[ "$state" == "DISABLED" ]]; then
     gnome-extensions enable disable-gestures-2021@verycrazydog.gmail.com
-    notify-send gesturetoggle "Gestures Enabled"
+    notify-send gesturetoggle "Gestures Disabled"
 else
     gnome-extensions disable disable-gestures-2021@verycrazydog.gmail.com
-    notify-send gestturetoggle "Gestures Disabled"
+    notify-send gestturetoggle "Gestures Enabled"
 fi
