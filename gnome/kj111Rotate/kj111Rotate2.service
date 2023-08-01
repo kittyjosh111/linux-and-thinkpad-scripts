@@ -1,7 +1,7 @@
+[Unit]
+Description=launcher for kj111Rotate service             
 [Service]
-Type=oneshot
-RemainAfterExit=true
-StandardOutput=journal
+Type=simple  
 ExecStart=/usr/local/bin/kj111Rotate
 [Install]
 WantedBy=default.target
