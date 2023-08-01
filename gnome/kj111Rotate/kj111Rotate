@@ -1,0 +1,46 @@
+#!/bin/bash
+rm /tmp/kj111Rotate
+evtest --grab /dev/input/event9 > /tmp/kj111Rotate 2>&1 &
+alreadySet="0"
+sleep 3
+while :
+do
+	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'Properties')" ];then
+		echo "Script not initialized. Try triggering tablet mode physically."
+	elif [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 1')" ];then
+		echo "-Tablet Mode Enabled"
+		if [ $alreadySet == "0" ];then
+			#disable the trackpoint
+			sudo evtest --grab /dev/input/event10 > /dev/null 2>&1 &
+			tpPid=$!
+			echo "  -Trackpoint disabled. Process ID is $tpPid!"
+			#disable the touchpad
+                        sudo evtest --grab /dev/input/event7 > /dev/null 2>&1 &
+                        topaPid=$!
+                        alreadySet="1"
+                        echo "  -Touchpad disabled. Process ID is $topaPid!"
+		else
+			echo "  -Trackpoint already disabled"
+			echo "  -Touchpad already disabled"
+		fi
+	else
+		echo "-Tablet Mode Disabled"
+		if [ $alreadySet == "1" ]; then
+			kill $tpPid
+			echo "  -Trackpoint enabled. Process $tpPid was killed!"
+			tpPid=""
+
+			kill $topaPid
+			echo "  -Touchpad enabled. Process $topaPid was killed!"
+			topaPid=""
+
+			alreadySet="0"
+		else
+			echo "  -Trackpoint already enabled"
+			echo "  -Touchpad already enabled"
+		fi
+	fi
+	sleep 5
+done
+
+#kill $pid

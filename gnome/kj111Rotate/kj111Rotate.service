@@ -1,0 +1,7 @@
+[Service]
+Type=oneshot
+RemainAfterExit=true
+StandardOutput=journal
+ExecStart=/usr/local/bin/kj111Rotate
+[Install]
+WantedBy=default.target
