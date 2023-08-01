@@ -1,31 +1,54 @@
 #!/bin/bash
+## Script to try and solve issues I had with tablet mode crashes on nearly all DE's, irrespective of wayland vs X11.
+## Uses evtest to monitor hardware events, as well as a way to "disable" a device. This is because --grab basically disables the device.
+## Use in conjunction with https://extensions.gnome.org/extension/5389/screen-rotate/ to maintain rotation.
+## Speciic to Thinkpads. Tested on Thinkpad X1 Yoga 2016 (OLED)
+## ThinkPad Extra Buttons - controls lid switch. I suspect this to be the issue with standard rotation.
+## TrackPoint - the red nub. Also controls the three mouse buttons between the keeb and the touchpad
+## TouchPad - the touchpad or trackpad, whatever you call it. The useless rectangle.
+
+## We write evtest output to a file in /tmp. First remove it, as not doing so screws things up.
 rm /tmp/kj111Rotate
-evtest --grab /dev/input/event9 > /tmp/kj111Rotate 2>&1 &
-alreadySet="0"
-sleep 3
+
+## Find the kernel ID for each of the devices needed, then log it to output.
+extraButtons=$(sudo libinput list-devices | grep "ThinkPad Extra Buttons" -A 1 | grep "/dev/input/event*" | cut -c 35-) #ThinkPad Extra Buttons
+tp=$(sudo libinput list-devices | grep "TrackPoint" -A 1 | grep "/dev/input/event*" | cut -c 35-) #Trackpoint
+topa=$(sudo libinput list-devices | grep "TouchPad" -A 1 | grep "/dev/input/event*" | cut -c 35-) #TouchPad
+echo "[kernel id]:: ThinkPad Extra Buttons: $extraButtons, TrackPoint: $tp, TouchPad: $topa"
+
+## Run the initial evtest on the ThinkPad Extra Buttons. Doing so seems to disable normal rotation and keeps the TrackPoint and TouchPad functional.
+evtest --grab /dev/input/event$extraButtons > /tmp/kj111Rotate 2>&1 &
+alreadySet="0" #set a variable we use later on
+sleep 5 #wait for tmp file to populate
+
+## The while True loop in all its glory.
 while :
 do
+	## First, we should see whether tablet mode has ever been triggered.
 	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'Properties')" ];then
 		echo "Script not initialized. Try triggering tablet mode physically."
+
+	## If the tmp file has ```value 1```, that means that tablet mode is active (thinkpad in tablet mode)
 	elif [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 1')" ];then
-		echo "-Tablet Mode Enabled"
 		if [ $alreadySet == "0" ];then
+			echo "-Tablet Mode Enabled"
 			#disable the trackpoint
-			sudo evtest --grab /dev/input/event10 > /dev/null 2>&1 &
+			sudo evtest --grab /dev/input/event$tp > /dev/null 2>&1 &
 			tpPid=$!
 			echo "  -Trackpoint disabled. Process ID is $tpPid!"
 			#disable the touchpad
-                        sudo evtest --grab /dev/input/event7 > /dev/null 2>&1 &
+                        sudo evtest --grab /dev/input/event$topa > /dev/null 2>&1 &
                         topaPid=$!
                         alreadySet="1"
                         echo "  -Touchpad disabled. Process ID is $topaPid!"
 		else
-			echo "  -Trackpoint already disabled"
-			echo "  -Touchpad already disabled"
+			sleep 5 #So we don't completely burn out the CPU by spamming this loop
 		fi
+	## Else, if the tmp file has ```value 0```, that means it is in laptop mode
 	else
-		echo "-Tablet Mode Disabled"
 		if [ $alreadySet == "1" ]; then
+			echo "-Tablet Mode Disabled"
+
 			kill $tpPid
 			echo "  -Trackpoint enabled. Process $tpPid was killed!"
 			tpPid=""
@@ -36,11 +59,8 @@ do
 
 			alreadySet="0"
 		else
-			echo "  -Trackpoint already enabled"
-			echo "  -Touchpad already enabled"
+			sleep 5 #again, so we don't cook the cpu
 		fi
 	fi
 	sleep 5
 done
-
-#kill $pid
