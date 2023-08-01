@@ -6,6 +6,8 @@
 
 - Move ```kj111Rotate2.service``` to /etc/systemd/system/. Enable and start it with systemctl command.
 
+- Install the gnome extension from here: ```https://extensions.gnome.org/extension/5389/screen-rotate/```
+
 **This script was only tested on Wayland GNOME**
 
 ---
