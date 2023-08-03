@@ -20,7 +20,7 @@ Thus, let's write a script to toggle the battery and performance modes based on 
 
 **Install:**
 
-- Move ```system76pm``` to /usr/local/bin. Edit it and assign your username to the USERNAME variable. Give it executable perms.
+- Move ```system76pm``` to /usr/local/bin. Edit it and assign your username to the USERNAME variable. Give it executable perms. If you are not using gnome, feel free to comment out the USERNAME variable and the two lines that use it.
 
 - Move ```system76pm-suspend``` to /usr/local/bin. Give it executable perms.
 
