@@ -12,6 +12,12 @@
 
 ---
 
+**Known Issues**
+
+If this script starts up when you are already in tablet mode, the trakpoint and touchpad get inactivated until your next login NOT IN TABLET MODE. This is due to the phenomena where when you run evtest grab on Thinkpad Extra Buttons while tablet mode is in effect, then the trackpoint/touchpad get deactivated. Still working on a fix or workaround.
+
+---
+
 **Why?**
 
 Oh boy.
@@ -65,36 +71,36 @@ The script logs events. Run ```systemctl status kj111Rotate2.service``` to view 
      Loaded: loaded (/etc/systemd/system/kj111Rotate2.service; enabled; preset: disabled)
     Drop-In: /usr/lib/systemd/system/service.d
              └─10-timeout-abort.conf
-     Active: active (running) since Tue 2023-08-01 13:53:51 PDT; 1h 2min ago
-   Main PID: 118705 (kj111Rotate)
-      Tasks: 3 (limit: 9288)
-     Memory: 808.0K
-        CPU: 10.096s
+     Active: active (running) since Tue 2023-09-12 10:51:31 PDT; 44s ago
+   Main PID: 80434 (kj111Rotate)
+      Tasks: 4 (limit: 9286)
+     Memory: 1.0M
+        CPU: 387ms
      CGroup: /system.slice/kj111Rotate2.service
-             ├─118705 /bin/bash /usr/local/bin/kj111Rotate
-             ├─118827 evtest --grab /dev/input/event9
-             └─141100 sleep 5
+             ├─80434 /bin/bash /usr/local/bin/kj111Rotate
+             ├─80572 evtest --grab /dev/input/event9
+             ├─80598 inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate
+             └─80599 /bin/bash /usr/local/bin/kj111Rotate
 
-Aug 01 14:16:01 x1yoga kj111Rotate[118705]:Script not initialized. Try triggering tablet mode physically.
-Aug 01 14:16:21 x1yoga kj111Rotate[118705]: -Tablet Mode Enabled
-Aug 01 14:16:21 x1yoga kj111Rotate[118705]:   -Trackpoint disabled. Process ID is 125816!
-Aug 01 14:16:21 x1yoga kj111Rotate[118705]:   -Touchpad disabled. Process ID is 125817!
-Aug 01 14:16:21 x1yoga sudo[125817]:     root : PWD=/ ; USER=root ; COMMAND=/usr/bin/evtest --grab /dev/input/event4
-Aug 01 14:16:21 x1yoga sudo[125816]:     root : PWD=/ ; USER=root ; COMMAND=/usr/bin/evtest --grab /dev/input/event10
-Aug 01 14:16:21 x1yoga sudo[125817]: pam_unix(sudo:session): session opened for user root(uid=0) by (uid=0)
-Aug 01 14:16:21 x1yoga sudo[125816]: pam_unix(sudo:session): session opened for user root(uid=0) by (uid=0)
-Aug 01 14:26:07 x1yoga kj111Rotate[118705]: -Tablet Mode Disabled
-Aug 01 14:26:07 x1yoga kj111Rotate[118705]:   -Trackpoint enabled. Process 125816 was killed!
-Aug 01 14:26:07 x1yoga kj111Rotate[118705]:   -Touchpad enabled. Process 125817 was killed!
+Sep 12 10:51:37 yoga kj111Rotate[80598]: Setting up watches.
+Sep 12 10:51:37 yoga kj111Rotate[80598]: Watches established.
+Sep 12 10:52:10 yoga kj111Rotate[80599]: -Tablet Mode Enabled
+Sep 12 10:52:10 yoga kj111Rotate[80599]:   -Trackpoint disabled. Process ID is 80793!
+Sep 12 10:52:10 yoga kj111Rotate[80599]:   -Touchpad disabled. Process ID is 80794!
+Sep 12 10:52:10 yoga sudo[80794]:     root : PWD=/ ; USER=root ; COMMAND=/usr/bin/evtest --grab /dev/input/event4
+Sep 12 10:52:10 yoga sudo[80793]:     root : PWD=/ ; USER=root ; COMMAND=/usr/bin/evtest --grab /dev/input/event10
+Sep 12 10:52:13 yoga kj111Rotate[80599]: -Tablet Mode Disabled
+Sep 12 10:52:13 yoga kj111Rotate[80599]:   -Trackpoint enabled. Process 80793 was killed!
+Sep 12 10:52:13 yoga kj111Rotate[80599]:   -Touchpad enabled. Process 80794 was killed!
 ```
 
-First, notice the first line ```Script not initialized. Try triggering tablet mode physically.``` This is because the tmp file is still empty, and thus the script has to wait for you the user to trigger an entry or exit from tablet mode in order to really do anything. If you see this message, do as it says and just try triggering tablet mode (fold the keyboard back if you use a Yoga)
+Lines 1 and 2 are from inotify finishing setup of its watch.
 
-Then notice line 2. This line indicates that the computer has entered tablet mode. The next few lines tell us that the script has disabled both the TrackPoint and TouchPad, giving us their PIDs as well. If you need to manaully stop these processes because your trackpad or trackpoint don't work, just run ```kill -9 XXX```, where XXX is the PID number.
+Then notice line 3. This line indicates that the computer has entered tablet mode. The next few lines tell us that the script has disabled both the TrackPoint and TouchPad, giving us their PIDs as well. If you need to manaully stop these processes because your trackpad or trackpoint don't work, just run ```kill -9 XXX```, where XXX is the PID number.
 
-Lines 5-8 are just a result of systemd using root perms to run the evtest command.
+Lines 6-7 are just a result of systemd using root perms to run the evtest command.
 
-Lines 6 and onward tell us that the computer exited tablet mode. Thus we need to give back control over the TrackPoint and TouchPad. The script just terminates the PID from earlier on and logs it in, so that you can debug.
+Lines 8 and onward tell us that the computer exited tablet mode. Thus we need to give back control over the TrackPoint and TouchPad. The script just terminates the PID from earlier on and logs it in, so that you can debug.
 
 ---
 

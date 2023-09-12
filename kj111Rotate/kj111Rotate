@@ -21,15 +21,11 @@ evtest --grab /dev/input/event$extraButtons > /tmp/kj111Rotate 2>&1 &
 alreadySet="0" #set a variable we use later on
 sleep 5 #wait for tmp file to populate
 
-## The while True loop in all its glory.
-while :
-do
-	## First, we should see whether tablet mode has ever been triggered.
-	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'Properties')" ];then
-		echo "Script not initialized. Try triggering tablet mode physically."
+## Polling is expensive. Let us use inotify.
+inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate | while read changed; do
 
 	## If the tmp file has ```value 1```, that means that tablet mode is active (thinkpad in tablet mode)
-	elif [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 1')" ];then
+	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 1')" ];then
 		if [ $alreadySet == "0" ];then
 			echo "-Tablet Mode Enabled"
 			#disable the trackpoint
@@ -41,9 +37,8 @@ do
                         topaPid=$!
                         alreadySet="1"
                         echo "  -Touchpad disabled. Process ID is $topaPid!"
-		else
-			sleep 5 #So we don't completely burn out the CPU by spamming this loop
 		fi
+
 	## Else, if the tmp file has ```value 0```, that means it is in laptop mode
 	else
 		if [ $alreadySet == "1" ]; then
@@ -58,9 +53,8 @@ do
 			topaPid=""
 
 			alreadySet="0"
-		else
-			sleep 5 #again, so we don't cook the cpu
 		fi
 	fi
-	sleep 5
+
 done
+
