@@ -16,10 +16,28 @@ tp=$(sudo libinput list-devices | grep "TrackPoint" -A 1 | grep "/dev/input/even
 topa=$(sudo libinput list-devices | grep "TouchPad" -A 1 | grep "/dev/input/event*" | cut -c 35-) #TouchPad
 echo "[kernel id]:: ThinkPad Extra Buttons: $extraButtons, TrackPoint: $tp, TouchPad: $topa"
 
+## First determine whether we started the script in tablet mode or not. 0 is nontablet and 1 is tablet mode.
+## Why we do this is because should the script start in tablet mode, running the evtest grab will disable both track and touch until next login
+## This script SHOULD NOT start until SW_TABLET_MODE is 0
+evtest /dev/input/event$extraButtons > /tmp/kj111Rotate 2>&1 & #here, don't grab it, just monitor it
+checkPid=$! #we'll need to shut off the monitor later
+sleep 2 #let file populate
+while : # use polling here to wait for the exit from tablet mode. Oh well. inotify somehow won't break the loop correctly
+do
+sleep 5
+if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 0')" ];then
+	echo "Exited tablet mode. We are now safe to start the script."
+	kill $checkPid #kill initial monitor
+	rm /tmp/kj111Rotate
+	break 2
+fi
+done
+echo "Prerun checklist complete. Script starting..."
+
 ## Run the initial evtest on the ThinkPad Extra Buttons. Doing so seems to disable normal rotation and keeps the TrackPoint and TouchPad functional.
 evtest --grab /dev/input/event$extraButtons > /tmp/kj111Rotate 2>&1 &
 alreadySet="0" #set a variable we use later on
-sleep 5 #wait for tmp file to populate
+sleep 2 #wait for tmp file to populate
 
 ## Polling is expensive. Let us use inotify.
 inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate | while read changed; do
@@ -37,6 +55,9 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate 
                         topaPid=$!
                         alreadySet="1"
                         echo "  -Touchpad disabled. Process ID is $topaPid!"
+                else
+                        echo "-Tablet Mode Enabled"
+                        echo "  -No changes to Trackpoint or Touchpad"
 		fi
 
 	## Else, if the tmp file has ```value 0```, that means it is in laptop mode
@@ -53,8 +74,10 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate 
 			topaPid=""
 
 			alreadySet="0"
+                else
+                       echo "-Tablet Mode Disabled"
+                       echo "  -No changes to Trackpoint or Touchpad"
 		fi
 	fi
 
 done
-

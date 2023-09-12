@@ -1,6 +1,6 @@
 **Install:**
 
-- Install ```evtest``` with your package manager.
+- Install ```evtest``` and ```inotify-tools``` with your package manager.
 
 - Move ```kj111Rotate``` to /usr/local/bin. Give it executable perms.
 
@@ -9,12 +9,6 @@
 - If on GNOME, install the gnome extension from here: ```https://extensions.gnome.org/extension/5389/screen-rotate/```. This preserves rotation.
 
 **This script was only tested on Wayland GNOME**
-
----
-
-**Known Issues**
-
-If this script starts up when you are already in tablet mode, the trakpoint and touchpad get inactivated until your next login NOT IN TABLET MODE. This is due to the phenomena where when you run evtest grab on Thinkpad Extra Buttons while tablet mode is in effect, then the trackpoint/touchpad get deactivated. Still working on a fix or workaround.
 
 ---
 
@@ -59,6 +53,8 @@ Event: time 1690923246.781422, -------------- SYN_REPORT ------------
 Notice the ```value 0``` or ```value 1```. This can be used to determine whether the tablet has entered tablet mode or not. Thus, if we enter tablet mode, we run evtest --grab on both the TrackPoint and TouchPad to "turn them off". We should note down their PID though, so we can terminate the grab and thus return input to the user upon exiting tablet mode. In effect, when the device exits tablet mode, we kill the evtest process grabbing the TrackPoint and TouchPad, thereby restoring functionality.
 
 Couple this with systemd, and we can run this script on startup.
+
+One more note, if we run --grab when tablet mode has already been entered (```value 1```), then the trackpoint and touchpad get disabled until the next time you login to the session NOT in tablet mode. We overcome this issue by first running ```evtest``` to monitor the state of tablet mode. If we detect tablet mode, we will halt the grab until the user exits tablet mode.
 
 ---
 
