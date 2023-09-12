@@ -22,16 +22,21 @@ echo "[kernel id]:: ThinkPad Extra Buttons: $extraButtons, TrackPoint: $tp, Touc
 evtest /dev/input/event$extraButtons > /tmp/kj111Rotate 2>&1 & #here, don't grab it, just monitor it
 checkPid=$! #we'll need to shut off the monitor later
 sleep 2 #let file populate
-while : # use polling here to wait for the exit from tablet mode. Oh well. inotify somehow won't break the loop correctly
-do
-sleep 5
-if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 0')" ];then
-	echo "Exited tablet mode. We are now safe to start the script."
-	kill $checkPid #kill initial monitor
-	rm /tmp/kj111Rotate
-	break 2
+
+if [ "$(cat /tmp/kj111Rotate | grep SW_TABLET_MODE | cut -c41-)" == "1" ];then #only run if we detect
+echo "Prerun checklist failed. We are in tablet mode."
+echo "Waiting to exit tablet mode..."
+	while : # use polling here to wait for the exit from tablet mode. Oh well. inotify somehow won't break the loop correctly
+	do
+	sleep 3
+	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 0')" ];then
+		echo "Exited tablet mode. We are now safe to start the script."
+		kill $checkPid #kill initial monitor
+		break 2
+	fi
+	done
 fi
-done
+rm /tmp/kj111Rotate #clear it out for the grab output
 echo "Prerun checklist complete. Script starting..."
 
 ## Run the initial evtest on the ThinkPad Extra Buttons. Doing so seems to disable normal rotation and keeps the TrackPoint and TouchPad functional.
