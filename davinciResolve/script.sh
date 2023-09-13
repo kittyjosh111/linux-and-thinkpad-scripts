@@ -2,36 +2,124 @@
 #script to do converstions for mov, mp4, or mkv to a mov file that davinci resolve (free) can read.
 #hurr durr inefficient programming time
 
-cd "$1" #allows for user to pass in filepaths that contain the videos
+while getopts "hf:s:c:" flag; do #case handler
+	case $flag in
+		h) #help flag
+		echo ""
+		echo "Usage: ./script.sh -f [DIRECTORY] -s [OPTION]"
+		echo "This script allows converting videos into a format that DaVinci Resolve (free) can recognize on linux."
+		echo ""
+		echo "-h                    Prints a help message."
+		echo "                        This is what you are reading right now."
+		echo ""
+		echo "-f [DIRECTORY]        Provide a DIRECTORY to the script. Defaults to where the script is run from."
+		echo "                        ex: /home/user/Videos/subfolder"
+		echo ""
+		echo "-s [OPTION]           Provide which conversion script to use. Defaults to low."
+		echo "                        'low' creates smaller, lower-quality files, and 'high' creates larger, higher-quality files"
+		echo ""
+		echo "-c [FORMAT]           Provide a comma-separated list of custom video formats to convert. Defaults to mp4, mov, and mkv"
+		echo "                        ex: insv,mkv,mp4"
+		echo "                        Note you need to redefine the default formats when defining custom ones."
+		echo "                        Note there are no checks to whether ffmpeg can actually do the conversion."
+		echo ""
+		exit 1
+   		;;
+
+		f) #pass in dir to work in
+		dir="$OPTARG"
+		;;
+
+		s) #pass in which script to use
+		if [ "$OPTARG" == "low" ]
+		then
+			script="0"
+		elif [ "$OPTARG" == "high" ]
+		then
+			script="1"
+		else
+			echo "Unrecognized option for -s. The flag can take options 'low' or 'high'"
+			exit 1
+		fi
+		;;
+
+		c) #pass in custom file formats
+		search="$OPTARG"
+		;;
+
+		?) #everything else
+		echo "Invalid option. Run ./script -h for help"
+		exit 1
+		;;
+
+	esac
+done
+
+#first make sure we have a directory to work for.
+if [ -z "$dir" ]
+then
+	echo "[ERROR] -f flag not passed. You must specify the overaching directory of videos for conversion..."
+	exit 1
+else
+	cd "$dir"
+	dir="$(pwd)"
+fi
+
+#then check which conversion script to use.
+if [ -z "$script" ]
+then
+    echo "[NOTICE] -s flag not passed. Defaulting to lower-quality conversion script..."
+	script="0"
+fi
+
+#lastly check for 
+if [ -z "$search" ]
+then
+    echo "[NOTICE] -c flag not passed. Defaulting to mp4,mov,mkv..."
+	search="*.mp4 *.mov *.mkv"
+else
+	for i in ${search//,/ }
+		do
+			intermediate="$intermediate *.$i"
+		done
+	search="$intermediate"
+fi
 
 #vars
 formatDate=$(date +'%m%d%Y-%H%M%S') #make the subfolder name unique by prefixing with formatDate
-search="*.mp4 *.mov *.mkv *.insv" #file extensions we search for. Modify as needed
-lsOut=$(ls $search)
-args="$2"
-
-echo "Script starting, please wait..."
-mkdir output_$formatDate #creates subfolder to house the converted videos and log file
-
-shopt -s nocaseglob #begin ignore capitalization
+lsOut=$(ls $search 2>/dev/null) #search for anything that matches $search
 total=$(ls $search 2>/dev/null | wc -l) #total videos to process
+if [ "$script" == 0 ] #we'll assign ffmpeg flags to the script variable
+then
+	#My script (smaller files, but reduced quality)
+	script="-vcodec mjpeg -acodec pcm_s16be"
+elif [ "$script" == 1 ]
+then
+	#ArchWiki's script (larger files)
+	script="-c:v dnxhd -profile:v dnxhr_hq -pix_fmt yuv422p -c:a pcm_s16le"
+fi
 
-echo "$total files were found for conversion."
+#start the script
+echo "Script starting, please wait..."
+echo "  $total files were found for conversion."
+if [ "$total" == "0" ] #don't create a folder if nothing could be found
+then
+	echo "  No files can be converted. Aborting..."
+	exit 1
+fi
 
+#big "glob" that will convert all videos in a folder
+mkdir output_$formatDate #creates subfolder to house the converted videos and log file
+shopt -s nocaseglob #begin ignore capitalization
 i=0
 for file in $lsOut
 do
-    let "i++"
-    echo "Proccesing ($i/$total) files..."
-    #actual conversion
-    if [ -z "$args" ] #HEY! EDIT THIS TO USE FLAGS NEXT TIME!! :)
-    then
-        #My script (smaller files, but reduced quality)
-        ffmpeg -y -i "$file" -vcodec mjpeg -acodec pcm_s16be -f mov "output_$formatDate/${file%.*}.mov" 2>> output_$formatDate/log.log
-    else
-        #ArchWiki's script (larger files)
-        ffmpeg -y -i "$file" -c:v dnxhd -profile:v dnxhr_hq -pix_fmt yuv422p -c:a pcm_s16le -f mov "output_$formatDate/${file%.*}.mov" 2>> output_$formatDate/log.log
+	let "i++"
+	echo "  Proccesing ($i/$total) files..."
+	#actual conversion
+	ffmpeg -y -i "$file" $script -f mov "output_$formatDate/${file%.*}.mov" 2>> output_$formatDate/log.log
 done
-shopt -u nocaseglob #end ignore capitalization
 
-echo "Script finished. Files can be found in output_$formatDate/."
+shopt -u nocaseglob #end ignore capitalization
+echo "Script finished. Files can be found in $dir/output_$formatDate/."
+#and we are done.
