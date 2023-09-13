@@ -12,7 +12,7 @@ while getopts "hf:s:c:" flag; do #case handler
 		echo "-h                    Prints a help message."
 		echo "                        This is what you are reading right now."
 		echo ""
-		echo "-f [DIRECTORY]        Provide a DIRECTORY to the script. Defaults to where the script is run from."
+		echo "-f [DIRECTORY]        Required. Provide a DIRECTORY to the script. Any videos within the DIRECTORY will be considered for conversion."
 		echo "                        ex: /home/user/Videos/subfolder"
 		echo ""
 		echo "-s [OPTION]           Provide which conversion script to use. Defaults to low."
