@@ -6,7 +6,7 @@ while getopts "hf:s:c:" flag; do #case handler
 	case $flag in
 		h) #help flag
 		echo ""
-		echo "Usage: ./script.sh -f [DIRECTORY] -s [OPTION]"
+		echo "Usage: drfree -f [DIRECTORY] -s [OPTION]"
 		echo "This script allows converting videos into a format that DaVinci Resolve (free) can recognize on linux."
 		echo ""
 		echo "-h                    Prints a help message."
