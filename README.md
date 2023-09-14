@@ -9,8 +9,9 @@ The scripts were used on the following distros:
 1) Fedora Linux 36
 2) Fedora Linux 37
 3) Fedora Linux 38
+It should work on other distros, but specifics of installation may change.
 
-The scripts were used on the following devices:
+The scripts were developed, tested, and sometimes remain on the following devices:
 1) Thinkpad P16s (Intel) Gen 1 (2022)
 2) Thinkpad X1 Yoga (OLED) Gen 1 (2016)
 3) Thinkpad E540 (Intel) i5 4200M (2014)
@@ -51,4 +52,4 @@ The scripts attempt to address the following issues:
 
 - ```system76pm```: Script and systemd service aimed to make ```system76-power``` more automatic. ```system76-power``` has been much more efficient than ```power-profiles-daemon``` on my ThinkPad Yogas, but it always defaults to Balanced. ```system76pm``` will change between Performance and Battery modes depending on if you are connected to AC power, and will toggle animations on or off on GNOME.
 
-```thinkpads```: Configs specific to ThinkPads. Example include thinkfan configs for the P16s to make it run at tolerable noises, or a script to unload/reload rmi_smbus, thus reloading the clunkpad buttons after suspend.
+- ```thinkpads```: Configs specific to ThinkPads. Example include thinkfan configs for the P16s to make it run at tolerable noises, or a script to unload/reload rmi_smbus, thus reloading the clunkpad buttons after suspend.
