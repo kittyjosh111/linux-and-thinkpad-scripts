@@ -2,7 +2,7 @@
 
 Using GNOME is an everlasting experience of cursing at strange issues, marveling at simplicity, but more frequently, an ongoing battle of resource management versus ensuring that GNOME doesn't stutter and give you headaches by being forced to see how choppy the overview animation is. 
 
-Let's focuse on power. I've tried many power management tools including:
+Let's focus on power. I've tried many power management tools including:
 
 1) TLP itself (very choppy, good battery life improvement)
 

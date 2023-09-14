@@ -1,3 +1,5 @@
+# intro
+
 Script to convert all video files within a folder into a format recognizable by the free version of DaVinci Resolve on linux.
 
 The help message is found below:

@@ -1,3 +1,5 @@
+# xfce
+
 I love XFCE!
 
 Every time I try a new DE, something pisses me off about them. For example:
@@ -8,3 +10,9 @@ Every time I try a new DE, something pisses me off about them. For example:
 Yet XFCE has its issues. It does have good customizability and a minimal philosophy though, which is what I appreciate.The scripts here are tweaks I've made for my time in XFCE. Mainly its genmon and a rotator script.
 
 Most I've used XFCE is around 1.5 years.
+
+# in the folder...
+
+- ```screenRotate```: a script to rotate the screen on XFCE. Used with my Yoga models.
+
+- ```xfceGenMon```: a collection of polling monitor scripts for use with the general monitor (genmon) plugin on XFCE. You can use it on other OSes to like through GNOME's Executor extension.

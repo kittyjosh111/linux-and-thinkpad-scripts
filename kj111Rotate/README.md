@@ -1,4 +1,4 @@
-**Install:**
+# install:
 
 - Install ```evtest``` and ```inotify-tools``` with your package manager.
 
@@ -10,9 +10,7 @@
 
 **This script was only tested on Wayland GNOME**
 
----
-
-**Why?**
+# why?
 
 Oh boy.
 
@@ -56,9 +54,7 @@ Couple this with systemd, and we can run this script on startup.
 
 One more note, if we run --grab when tablet mode has already been entered (```value 1```), then the trackpoint and touchpad get disabled until the next time you login to the session NOT in tablet mode. We overcome this issue by first running ```evtest``` to monitor the state of tablet mode. If we detect tablet mode, we will halt the grab until the user exits tablet mode.
 
----
-
-**Debugging**
+# debugging
 
 The script logs events. Run ```systemctl status kj111Rotate2.service``` to view logs. We will look through an example now.
 
