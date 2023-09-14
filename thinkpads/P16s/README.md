@@ -1,0 +1,3 @@
+In this folder...
+
+- ```thinkfan.conf```: Wow is 12th gen P-series CPU hot. What's worse is that the BIOS seems to really want to keep the entire computer at a stable 35C before fans go down. I just wonder why thats the case. Thus, I manually set fan speed temp triggers that seem to balance coolness and fan noise.

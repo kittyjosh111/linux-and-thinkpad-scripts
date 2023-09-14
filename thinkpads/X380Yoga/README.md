@@ -1,1 +1,3 @@
-seems that when rotating the screen in tablet mode, sometimes Xorg crashes. Logs say ```Xorg crashed in _nl_load_domain.cold()``` It also seemed to point to xorg-x11-drv-wacom as the culprit. Uninstalled to see what effect it has, yet it seems that the wacom tablet options are still recognized.
+In this folder...
+
+- ```X11flicker``` is a file to stop flickering on the Yoga when it is in portrait mode. It does make animations choppier, but hey, no flickers. Truthfilly, I've just used wayland on the Yoga.
