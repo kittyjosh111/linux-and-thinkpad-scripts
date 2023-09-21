@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+# Script to toggle trackpad/touchpad on or off
+state=$(gsettings get org.gnome.desktop.peripherals.touchpad send-events)
+if [ $state == "'enabled'" ]; then
+	gsettings set org.gnome.desktop.peripherals.touchpad send-events disabled
+	notify-send gesturetoggle "Touchpad Disabled"
+elif [ $state == "'disabled'" ]; then
+	gsettings set org.gnome.desktop.peripherals.touchpad send-events enabled
+	notify-send gesturetoggle "Touchpad Enabled"
+else
+    echo "Something went wrong"
+fi
