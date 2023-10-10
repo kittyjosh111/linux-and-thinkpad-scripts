@@ -1,11 +1,12 @@
 #!/bin/bash
 #script to determine whether AC is attached, and if so, trigger system76-power >
 AC=$(acpi -V | grep "off-line")
-
+currentBrightness=$(cat /sys/class/backlight/intel_backlight/brightness)
 sleep 5
 
 if [ ! -z "$AC" ];then
     system76-power profile battery
+    echo $currentBrightness | tee /sys/class/backlight/intel_backlight/brightness
 else
     system76-power profile performance
 fi
