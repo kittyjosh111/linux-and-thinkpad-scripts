@@ -1,0 +1,323 @@
+#!/bin/bash
+#script to do converstions for mov, mp4, or mkv to a mov file that davinci resolve (free) can read.
+#hurr durr inefficient programming time
+#now with zenity as a simpler gui
+
+## as a GUI script, we want users to be able to navigate through prompts in a page-like function
+## drfree CLI had 3 main flags. Thus in the GUI, we need to present a "screen" or window to:
+##	- Select -f (mandatory, working directory)
+##	- Select -s or -c (optional flags)
+##	- Assign values to -s or -c
+##	- Confirm the selection
+##	- Broadcast the progress of the script
+## one way to ensure the ability to go back to any of these "screens" is by making each action a function
+## in this script, functions are used to contain each time the user needs to interact with the GUI
+## for example, choosing the working directory is a separate function from assigning values to flags
+## like a complex orgo mechanism, we will use a map at the very end to control the order in which functions activate
+
+#################
+### Functions ###
+#################
+
+#this function takes place of the old -f flag. It prompts users to choose a working directory
+dirFunction () {
+	dirFlag=$(zenity --file-selection --directory --title="Select the directory of videos")
+	dirOut="$?"
+	if [ "$dirOut" == "1" ] || [ "$dirOut" == "250" ] #pressing the cancel button gives code 250. Esc key gives 1
+	then
+		zenity --info --title 'Would you like to quit?' --text "Press 'No' to continue or 'Yes' to quit the program." --ok-label No --extra-button Yes
+		if [ "$?" == "1" ] #user presses Yes to quit. (No is just an empty string)
+		then
+			return 2 #refer to handlerFunction
+		else
+			return 1 #refer to handlerFunction
+		fi
+	fi #this if else statement is used again multiple times later in the script.
+	#now enter the directory specified
+	cd "$dirFlag"
+	dir="$(pwd)"
+	if [ "$dirFlag" != "$dir" ] #one more sanity check
+	then
+		#could be due to perms error or something
+		zenity --error --text="Could not enter chosen directory. Please choose a different directory."
+		return 1
+	fi
+}
+
+#this function allows users to check which optional flags they want to use. Akin to typing -s or -c in CLI
+flagGetFunction () {
+	flag=$(zenity --list --checklist --title="Choose which flags to use." --text="You can choose multiple flags to load. Not selecting anything will load default values. Read the description for information on each flag." --column=" " --column="Flag" --column="Description" " " "s" "Provide which conversion script to use. Defaults to low" " " "c" "Provide a comma-separated list of custom video formats to convert. Defaults to mp4, mov, and mkv")
+	if [ "$?" == "1" ]
+	then
+		zenity --info --title 'Would you like to quit?' --text "Press 'No' to continue choosing flags or 'Yes' to quit the program." --ok-label No --extra-button Yes
+		if [ "$?" == "1" ]
+		then
+			return 2
+		else
+			return 1
+		fi
+	fi
+	#now, let us analyze what flags were passed
+	if [ -z "$flag" ]
+	then
+		#by just clicking ok, no input is passed, so this part is triggered
+		#these were the variable names used in CLI, kept for consistency.
+		#their default values are below.
+		script="0" 
+		search="*.mp4 *.mov *.mkv"
+	else
+	#scriptFlag and formatFlag are new variables that indicate whether the GUI needs to prompt users with more dialog
+	#default values of 0 (no prompt) should be defined PRIOR to running flagGetFunction
+	for choice in ${flag//|/ }
+		do
+			if [ "$choice" == "s" ]
+			then
+				scriptFlag="1"
+			elif [ "$choice" == "c" ]
+			then
+				formatFlag="1"
+			else
+				#i can't forsee how this would trigger. It would be quite unexpected
+				zenity --error --text="Unexpected error in analysis of flagGetFunction. Aborting..."
+				exit
+			fi
+		done	
+	fi
+}
+
+#this function looks at the scriptFlag variable
+#allows users to choose between low and high quality conversion scripts
+scriptFlagFunction () {
+	#scriptFlag gives a list for users to choose from. This is not a checklist, unlike the list used earlier on.
+	if [ "$scriptFlag" == "1" ]
+	then
+		script=$(zenity --list --title="Choose which conversion script to use." --text="Read the description for information on each flag. Ignore the Value column." --column="Value" --column="Title" --column="Description" "0" "low" "creates smaller, lower-quality files" "1" "high" "creates larger, higher-quality files")		
+		if [ "$?" == "1" ]
+		then
+			zenity --info --title 'Would you like to quit?' --text "Press 'No' to continue choosing the conversion script or 'Yes' to quit the program." --ok-label No --extra-button Yes
+			if [ "$?" == "1" ]
+			then
+				return 2
+			else
+				return 1
+			fi
+		fi
+		if [ -z "$script" ]
+		then
+			#again, user might be able to just not select anything. We don't want that.
+			zenity --error --text="You must choose which conversion script to use..."
+			return 1
+		fi
+	fi
+}
+
+#this function looks at the formatFlag variable
+#allows users to type in a comma separated list of file formats
+formatFlagFunction () {
+	#formatFlag is a text entry dialog where users input a comma separated list which must be parsed to get the file extensions.
+	if [ "$formatFlag" == "1" ]
+	then
+		search=$(zenity --entry --title="Provide a list of file formats." --text="Enter a comma-separated list of ALL file formats you want this script to convert. ex: insv,mkv,mp4. Note there are no checks to whether ffmpeg can actually do the conversion.")
+		if [ "$?" == "1" ]
+		then
+			zenity --info --title 'Would you like to quit?' --text "Press 'No' to continue assigning custom formats or 'Yes' to quit the program." --ok-label No --extra-button Yes
+			if [ "$?" == "1" ]
+			then
+				return 2
+			else
+				return 1
+			fi
+		fi	
+		if [ -z "$search" ]
+			then
+				#user definitely might forget to put anything in. We don't want that.
+				zenity --error --text="You must provide a list of file formats separated by commas..."
+				return 1
+			fi
+		intermediate=""	#first blank this out in case it still retains values from a previous run
+		for i in ${search//,/ }
+		do
+			intermediate="$intermediate *.$i"
+		done
+			search="$intermediate" #this is the variable we use later on
+	fi
+}
+
+#this function prompts users to confirm the conversion prior to actual conversion
+confirmationFunction () {
+	if [ "$script" == "0" ]
+	then
+		quality="low quality"
+	elif [ "$script" == "1" ]
+	then
+		quality="high quality"
+	fi
+	confirmation=$(zenity --info --title 'Please confirm the following.' --text "You are using the $quality conversion script in this directory: \n\n $dir \n\nThe script will convert all files that match the following expressions: $search \n\nDoes this look right?" --ok-label Quit --extra-button No --extra-button Yes)
+	if [ "$confirmation" == "No" ]
+	then
+		return 1 #here, we should trigger confirmationFunction using handlerFunction
+	elif [ "$confirmation" == "Yes" ]
+	then
+		return 0 #move on to next step in mechanismMap
+	else #this is if we chose the quit button
+		zenity --info --title 'Would you like to quit?' --text "Press 'No' to continue confirmation or 'Yes' to quit the program." --ok-label No --extra-button Yes
+		if [ "$?" == "1" ]
+		then
+			return 2
+		else
+			return 3 #special case, we need to trigger confirmationFunction not chooseFunction
+		fi
+	fi
+}
+
+#function to let user choose which part of the mechanismMap they want to return to
+#used after confirmation screen
+#here, cancel brings us back to confirmationFunction. This is unique behavior
+chooseFunction () {
+	chooser="$(zenity --list --checklist --title="What would you like to change?" --text="You can choose multiple flags. Not selecting anything will bring you back to the confirmation." --column=" " --column="Flag" --column="Description" " " "f" "Change the working directory" " " "s" "Change the quality of conversion" " " "c" "Change the list of file formats to convert")"
+	for choice in ${chooser//|/ }
+	do
+		if [ "$choice" == "f" ]
+		then
+			dirFunction
+			handlerFunction dirFunction
+		elif [ "$choice" == "s" ]
+		then
+			scriptFlag="1" #initialize scriptFlagFunction
+			scriptFlagFunction
+			handlerFunction scriptFlagFunction
+		elif [ "$choice" == "c" ]
+		then
+			formatFlag="1" #initialize formatFlagFunction
+			formatFlagFunction
+			handlerFunction formatFlagFunction
+		else
+			zenity --error --text="Unexpected error in chooseFunction. Aborting..."
+			exit
+		fi
+	done	
+	confirmationFunction
+}
+
+#actual conversion
+#should stay as similar to the CLI conversion as possible to make it easier to update both scripts
+#echoes will be replaced with zenity dialogs
+#note to self, only comment out un-needed echo statements, it helps me know what is where in correlation to CLI
+conversionFunction () {
+	#vars
+	formatDate=$(date +'%m%d%Y-%H%M%S') #make the subfolder name unique by prefixing with formatDate
+	lsOut=$(ls $search 2>/dev/null) #search for anything that matches $search
+	total=$(ls $search 2>/dev/null | wc -l) #total videos to process
+	if [ "$script" == 0 ] #we'll assign ffmpeg flags to the script variable
+	then
+		#My script (smaller files, but reduced quality)
+		script="-vcodec mjpeg -acodec pcm_s16be"
+	elif [ "$script" == 1 ]
+	then
+		#ArchWiki's script (larger files)
+		script="-c:v dnxhd -profile:v dnxhr_hq -pix_fmt yuv422p -c:a pcm_s16le"
+	fi
+	#the following used to be later on in the script, but we want this to execute before zenity
+	if [ "$total" == "0" ] #don't create a folder if nothing could be found
+	then
+		###echo "  No files can be converted. Aborting..."
+		zenity --error --text="No files can be converted. Aborting..."
+		exit
+	fi
+	#start zenity progress stuff 
+	(
+		#start the script
+		###echo "Script starting, please wait..."
+		###echo "  $total files were found for conversion."
+		echo "# Script starting, please wait..."; sleep 2
+		echo "# $total files were found for conversion."; sleep 2
+
+		#big "glob" that will convert all videos in a folder
+		mkdir output_$formatDate #creates subfolder to house the converted videos and log file
+		shopt -s nocaseglob #begin ignore capitalization
+		i=0
+		for file in $lsOut
+		do
+			let "i++"
+			###echo "  Proccesing ($i/$total) files..."
+				# New stuff specific to zenity in the indent
+				echo "# Proccesing ($i/$total) files..."
+				echo "$((100*$i/$total-5))" #make the reported calue a bit less than actual for zenity progress
+			#actual conversion
+			ffmpeg -y -i "$file" $script -f mov "output_$formatDate/${file%.*}.mov" 2>> output_$formatDate/log.log
+		done
+
+		shopt -u nocaseglob #end ignore capitalization
+		#echo "Script finished. Files can be found in $dir/output_$formatDate/."
+		echo "# Script finished. Files can be found in $dir/output_$formatDate/."
+		echo "100"
+		#and we are done.
+	) |
+	zenity --progress --no-cancel \
+	 	#no-cancel is temporary. want to add back in cancel feature
+		--title="Conversion Status" \
+		--text="Running conversion scripts..." \
+		--percentage=0
+
+} #NEED A WAY TO GET CANCEL TO KILL OFF FFMPEG. THINKING ABOUT MULTIPLE SUBSHELLS TO CONTROL ZENITY AND FF SEPARATELY
+
+#handles return codes
+#if return 1, will repeat a function until it returns 0, aka succesful run
+#alternatively processes return 2 as a signal to exit
+#used in mechanismMap to restart a function after user presses "cancel" on a previous dialog
+#use as handlerFunction functionName
+handlerFunction () {
+	code="$?" #save var for continued usage
+	if [ "$code" == "0" ]
+	then
+		return #just move on to next step in mechanismMap
+	elif [ "$code" == "1" ]
+	then
+		#handlerFunction enters repeat mode
+		status="" #clear out variable first
+		until [ "$status" == "0" ] #we want to stop when return code finally becomes 0
+		do
+			$1 #runs the passed in function
+			status="$?" #get the new exit code of the function
+			if [ "$status" == "2" ] #in the case we get a 2, that means quit program
+			then
+				exit
+			fi
+		done
+	elif [ "$code" == "2" ]
+	then
+		exit #quit program
+	elif [ "$code" == "3" ] #this is the special case for confirmationFunction to trigger itself
+	then
+		confirmationFunction
+	else
+		zenity --error --text="Unexpected error in handlerFunction. Aborting..."
+		exit
+	fi
+}
+
+#full map of functions to execute in order and the introduction of logic to restart individual steps
+mechanismMap () {
+	dirFunction #if this step fails, we can prompt to restart this step.
+		handlerFunction dirFunction
+	flagGetFunction #if this step fails, we can prompt to restart this step
+		handlerFunction flagGetFunction
+	scriptFlagFunction #if this step fails, we can prompt to restart this step
+		handlerFunction scriptFlagFunction
+	formatFlagFunction #if this step fails, we can prompt to restart this step
+		handlerFunction formatFlagFunction
+	confirmationFunction #if this step fails, we go back to a previous step
+		handlerFunction chooseFunction
+	conversionFunction #conversion! No need to restart. If it fails it fails.
+	exit #and we're done
+}
+
+############
+### Main ###
+############
+
+#default vars
+scriptFlag="0" #default flag to 0, aka skip script chooser
+formatFlag="0" #default flag to 0, aka skip custom file formats
+mechanismMap
+
