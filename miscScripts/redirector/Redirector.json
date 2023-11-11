@@ -89,7 +89,7 @@
             ]
         },
         {
-            "description": "Invidious Rule 7",
+            "description": "Invidious Rule 8",
             "exampleUrl": "https://www.youtube-nocookie.com/embed/Lz13cxZNTCo",
             "exampleResult": "https://yewtu.be/embed/Lz13cxZNTCo",
             "error": null,

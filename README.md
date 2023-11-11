@@ -9,12 +9,15 @@ The scripts were used on the following distros:
 1) Fedora Linux 36
 2) Fedora Linux 37
 3) Fedora Linux 38
+4) Fedora Linux 39
+
 It should work on other distros, but specifics of installation may change.
 
 The scripts were developed, tested, and sometimes remain on the following devices:
-1) Thinkpad P16s (Intel) Gen 1 (2022)
-2) Thinkpad X1 Yoga (OLED) Gen 1 (2016)
-3) Thinkpad E540 (Intel) i5 4200M (2014)
+1) ThinkPad P16s (Intel) Gen 1 (2022)
+2) ThinkPad X1 Yoga (OLED) Gen 1 (2016)
+3) ThinkPad E540 (Intel) i5 4200M (2014)
+4) ThinkPad Yoga 370 / ThinkPad X380 Yoga (2017, 2018)
 
 # various scripts
 
@@ -22,7 +25,7 @@ There are a variety of scripts or guides included here including
 1) Running a QEMU Android machine
 2) Conversion script for DaVinci Resolve
 3) Power saving toggler using system76-power
-3) etc.
+4) etc.
 
 # thinkpad problems fixed
 
@@ -32,7 +35,7 @@ The scripts attempt to address the following issues:
 2) X11 Screen flickering on an X1 Yoga
 3) Touchscreen right clicks
 4) Trackpoint and trackpad being disabled upon resuming from sleep in linux
-5) Yoga device rotation issues
+5) Yoga device rotation crash
 
 ---
 
@@ -46,7 +49,7 @@ The scripts attempt to address the following issues:
 
 - ```kj111Rotate```: My custom script and systemd service to block GNOME from applying its own rotation service in favor of manually disabling/enabling the trackpoint and touchpad based on tablet mode status. This is designed specifically to the ThinkPad X1 Yoga, and only tested on GNOME Wayland.
 
-- ```miscScripts```: Extra, unfinished, or other general files that don't fit elsewhere. For example, an experimental script to convert pdfs into pngs, or configs for the ```motion``` package.
+- ```miscScripts```: Extra, unfinished, or other general files that don't fit elsewhere. For example, an experimental script to convert pdfs into pngs, or configs for changing YouTube links to invidious with the Redirector extension.
 
 - ```peripheralDevices```: Scripts targeting specific external hardware including the ThinkPad Trackpoint Keyboard (USB).
 
