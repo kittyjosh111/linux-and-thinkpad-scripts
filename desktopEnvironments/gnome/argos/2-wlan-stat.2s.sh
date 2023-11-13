@@ -5,7 +5,7 @@
 ## Vars
 rfOut=$(rfkill) #used for both bt and network stuff
 wlan=$(echo "$rfOut" | grep wlan | grep " blocked") #value if blocked (off)
-wact=$(ifstat | grep -v '0 0' | tail -n +4 | tail -n +1) #values from ifstat for active network interface
+wact=$(ifstat | grep -v '0 0' | tail -n +4 | tail -n1) #values from ifstat for active network interface
 if [[ ! -z $wact ]]; then
     rx=$(echo "$wact" | cut -c 49-56 | xargs) #receive rate
     if [[ ! -z $(echo "$rx" | grep K) ]]; then
