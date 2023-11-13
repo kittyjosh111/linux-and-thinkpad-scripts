@@ -7,11 +7,11 @@ rfOut=$(rfkill) #used for both bt and network stuff
 wlan=$(echo "$rfOut" | grep wlan | grep " blocked") #value if blocked (off)
 wact=$(ifstat | grep -v '0 0' | tail -n +4 | tail -n1) #values from ifstat for active network interface
 if [[ ! -z $wact ]]; then
-    rx=$(echo "$wact" | cut -c 49-56 | xargs) #receive rate
+    rx=$(echo "$wact" | cut -c 18-24 | xargs) #receive rate
     if [[ ! -z $(echo "$rx" | grep K) ]]; then
         rx=$(( ${rx//K}*1000 ))
     fi
-    tx=$(echo "$wact" | cut -c 63-72 | xargs) #transfer rate
+    tx=$(echo "$wact" | cut -c 34-40 | xargs) #transfer rate
     if [[ ! -z $(echo "$tx" | grep K) ]]; then
         tx=$(( ${tx//K}*1000 ))
     fi
