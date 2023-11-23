@@ -1,0 +1,27 @@
+#!/bin/bash
+#only works on X11
+
+if [ -z $1 ]; then
+    speed="-0.5" #replace with a default speed/accleleration factor if you want
+    echo "[NOTICE] No speed passed. Defaulting to $speed..."
+else
+    speed=$1
+fi
+
+matches="$(xinput --list | grep TrackPoint | cut -c 51-53 | xargs)"
+echo -e "The following device ids report having a TrackPoint:\n$matches\n---"
+
+changeSpeed () {
+    for each in $matches
+    do
+        echo "  Changing Accel Speed to $speed... for id $matches"
+        xinput --set-prop $each 'libinput Accel Speed' $speed
+        echo "  Change applied"
+    done
+}
+
+changeSpeed
+sleep 5
+changeSpeed
+
+echo "Done!"
