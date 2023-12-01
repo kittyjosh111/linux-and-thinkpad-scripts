@@ -1,14 +1,25 @@
 #!/bin/bash
-#script to determine whether AC is attached, and if so, change tuneD profiles and turbo boost
+#script to determine whether AC is attached, then modify a tmp file accordingly
 
+#  This script serves as and indicator to check AC status.
+#  We first create a file called "pmtoggle" in /tmp/.
+#  Then, if we have an AC attached, we write the value "0" to the file.
+#  Else, we write "1" to the file.
+
+#  External scripts can then look at /tmp/pmtoggle and act accordingly.
+#  For example, a script can turn on tuned's powersave profile if
+#  /tmp/pmtoggle is 0, and performance if it is 1
+
+#first, make sure the file is created
 if [ -z /tmp/pmtoggle ]; then
     echo "No pmtoggle found. Creating as /tmp/pmtoggle"
     touch /tmp/pmtoggle
 fi
 
+#then, figure out AC status and assign a value to tmp file
 AC=$(acpi -V | grep "off-line")
 if [ ! -z "$AC" ];then
-    echo "0" | tee /tmp/pmtoggle
+    echo "0" | tee /tmp/pmtoggle #offline
 else
-    echo "1" | tee /tmp/pmtoggle
+    echo "1" | tee /tmp/pmtoggle #online
 fi
