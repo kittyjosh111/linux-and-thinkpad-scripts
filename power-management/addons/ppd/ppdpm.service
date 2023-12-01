@@ -1,0 +1,7 @@
+[Unit]
+Description=launcher for ppdpm service             
+[Service]
+Type=simple  
+ExecStart=/usr/local/bin/ppdpm
+[Install]
+WantedBy=default.target

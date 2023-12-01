@@ -1,0 +1,7 @@
+[Unit]
+Description=launcher for tunedpm service             
+[Service]
+Type=simple  
+ExecStart=/usr/local/bin/tunedpm
+[Install]
+WantedBy=default.target

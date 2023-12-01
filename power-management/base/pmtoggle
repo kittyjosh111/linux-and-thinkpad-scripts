@@ -1,0 +1,14 @@
+#!/bin/bash
+#script to determine whether AC is attached, and if so, change tuneD profiles and turbo boost
+
+if [ -z /tmp/pmtoggle ]; then
+    echo "No pmtoggle found. Creating as /tmp/pmtoggle"
+    touch /tmp/pmtoggle
+fi
+
+AC=$(acpi -V | grep "off-line")
+if [ ! -z "$AC" ];then
+    echo "0" | tee /tmp/pmtoggle
+else
+    echo "1" | tee /tmp/pmtoggle
+fi
