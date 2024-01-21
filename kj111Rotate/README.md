@@ -1,6 +1,6 @@
 # install:
 
-- Install ```evtest``` and ```inotify-tools``` with your package manager.
+- Install ```evtest```, ```notify-send''', and ```inotify-tools``` with your package manager.
 
 - Move ```kj111Rotate``` to /usr/local/bin. Give it executable perms.
 

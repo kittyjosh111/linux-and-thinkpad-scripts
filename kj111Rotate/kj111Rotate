@@ -7,6 +7,17 @@
 ## TrackPoint - the red nub. Also controls the three mouse buttons between the keeb and the touchpad
 ## TouchPad - the touchpad or trackpad, whatever you call it. The useless rectangle.
 
+# change USERNAME if needed manually. This attempts to automatically determine your username
+USERNAME=$(who | grep "\(${_display_id}\)" | awk '{print $1}' | head -n 1)
+
+# Following function adapted from https://stackoverflow.com/questions/20292578/setting-gsettings-of-other-user-with-sudo
+function runas() {
+    display_id=":$(find /tmp/.X11-unix/* | sed 's#/tmp/.X11-unix/X##' | head -n 1)"
+    user_id=$(id -u "$USERNAME")
+    environment=("DISPLAY=$display_id" "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$user_id/bus")
+    sudo -Hu "$USERNAME" env "${environment[@]}" "$@" #we do this to execute functions such as notify-send or gsettings
+}
+
 ## We write evtest output to a file in /tmp. First remove it, as not doing so screws things up.
 rm /tmp/kj111Rotate
 
@@ -50,6 +61,7 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate 
 	## If the tmp file has ```value 1```, that means that tablet mode is active (thinkpad in tablet mode)
 	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 1')" ];then
 		if [ $alreadySet == "0" ];then
+                        runas notify-send "Tablet Mode Enabled" "TrackPoint and TouchPad Disabled."
 			echo "-Tablet Mode Enabled"
 			#disable the trackpoint
 			sudo evtest --grab /dev/input/event$tp > /dev/null 2>&1 &
@@ -68,21 +80,18 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate 
 	## Else, if the tmp file has ```value 0```, that means it is in laptop mode
 	else
 		if [ $alreadySet == "1" ]; then
+                        runas notify-send "Tablet Mode Disabled" "TrackPoint and TouchPad Enabled"
 			echo "-Tablet Mode Disabled"
-
 			kill $tpPid
 			echo "  -Trackpoint enabled. Process $tpPid was killed!"
 			tpPid=""
-
 			kill $topaPid
 			echo "  -Touchpad enabled. Process $topaPid was killed!"
 			topaPid=""
-
 			alreadySet="0"
                 else
                        echo "-Tablet Mode Disabled"
                        echo "  -No changes to Trackpoint or Touchpad"
 		fi
 	fi
-
 done
