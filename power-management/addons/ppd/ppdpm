@@ -10,16 +10,12 @@ pmtoggle
 inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/pmtoggle | while read changed; do
     ## If the tmp file has value 0, that means that there is no AC attached
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then
-        powerprofilesctl set power-saver #tuned's powersave profile
-        echo "1" | tee /sys/devices/system/cpu/intel_pstate/no_turbo #turn off turbo boost
-        su - $USERNAME -c "gsettings set org.gnome.desktop.interface enable-animations false"
+        powerprofilesctl set power-saver #ppd's powersave profile
         echo "AC not attached. Entering powersave mode..."
 
     ## Else, if the tmp file has value 1, that means there is AC attached
     else
-        powerprofilesctl set performance #tuned's throughput-performance profile
-        echo "0" | tee /sys/devices/system/cpu/intel_pstate/no_turbo #turn on turbo boost
-        su - $USERNAME -c "gsettings set org.gnome.desktop.interface enable-animations true"
+        powerprofilesctl set performance #ppd's throughput-performance profile
         echo "AC attached. Entering performance mode..."
     fi
 done

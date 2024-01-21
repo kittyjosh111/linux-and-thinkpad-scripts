@@ -16,10 +16,19 @@ if [ -z /tmp/pmtoggle ]; then
     touch /tmp/pmtoggle
 fi
 
+function toggler() {
+  STATUS=$(cat /tmp/pmtoggle)
+  if [ $STATUS != $1 ]; then
+    echo "$1" | tee /tmp/pmtoggle
+  else
+    echo "Changes already applied. Ignoring udev input..."
+  fi
+}
+
 #then, figure out AC status and assign a value to tmp file
 AC=$(acpi -V | grep "off-line")
 if [ ! -z "$AC" ];then
-    echo "0" | tee /tmp/pmtoggle #offline
+    toggler 0 #offline
 else
-    echo "1" | tee /tmp/pmtoggle #online
+    toggler 1 #online
 fi

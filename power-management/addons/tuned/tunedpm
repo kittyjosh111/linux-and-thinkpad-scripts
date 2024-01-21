@@ -9,13 +9,11 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/pmtoggle | w
     ## If the tmp file has value 0, that means that there is no AC attached
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then
         tuned-adm profile powersave #tuned's powersave profile
-        echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo #turn off turbo boost
         echo "AC not attached. Entering powersave mode..."
 
     ## Else, if the tmp file has value 1, that means there is AC attached
     else
         tuned-adm profile throughput-performance #tuned's throughput-performance profile
-        echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo #turn on turbo boost
         echo "AC attached. Entering performance mode..."
     fi
 done
