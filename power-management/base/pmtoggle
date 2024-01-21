@@ -11,17 +11,18 @@
 #  /tmp/pmtoggle is 0, and performance if it is 1
 
 #first, make sure the file is created
-if [ -z /tmp/pmtoggle ]; then
-    echo "No pmtoggle found. Creating as /tmp/pmtoggle"
-    touch /tmp/pmtoggle
+if ! [ -f /tmp/pmtoggle ]; then
+    echo "No pmtoggle found. Creating as /tmp/pmtoggle" 
+    echo "pmtoggle" | tee /tmp/pmtoggle > /dev/null #write something random so $STATUS is set for later. Also prints to console.
 fi
+
 
 function toggler() {
   STATUS=$(cat /tmp/pmtoggle)
-  if [ $STATUS != $1 ]; then
-    echo "$1" | tee /tmp/pmtoggle
+  if [ $STATUS == $1 ]; then
+    echo "Changes already applied. Ignoring udev changes..."
   else
-    echo "Changes already applied. Ignoring udev input..."
+    echo "$1" | tee /tmp/pmtoggle
   fi
 }
 
