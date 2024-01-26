@@ -24,7 +24,7 @@ rm /tmp/kj111Rotate
 ## Find the kernel ID for each of the devices needed, then log it to output.
 extraButtons=$(sudo libinput list-devices | grep "ThinkPad Extra Buttons" -A 1 | grep "/dev/input/event*" | cut -c 35-) #ThinkPad Extra Buttons
 tp=$(sudo libinput list-devices | grep "TrackPoint" -A 1 | grep "/dev/input/event*" | cut -c 35-) #Trackpoint
-topa=$(sudo libinput list-devices | grep "TouchPad" -A 1 | grep "/dev/input/event*" | cut -c 35-) #TouchPad
+topa=$(sudo libinput list-devices | grep "Touchpad" -A 1 | grep "/dev/input/event*" | cut -c 35-) #TouchPad
 echo "[kernel id]:: ThinkPad Extra Buttons: $extraButtons, TrackPoint: $tp, TouchPad: $topa"
 
 ## First determine whether we started the script in tablet mode or not. 0 is nontablet and 1 is tablet mode.
@@ -61,7 +61,7 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate 
 	## If the tmp file has ```value 1```, that means that tablet mode is active (thinkpad in tablet mode)
 	if [ ! -z "$(tail -n2 /tmp/kj111Rotate | grep 'value 1')" ];then
 		if [ $alreadySet == "0" ];then
-                        runas notify-send "Tablet Mode Enabled" "TrackPoint and TouchPad Disabled."
+                        runas notify-send --transient "Tablet Mode Enabled" "TrackPoint and TouchPad Disabled."
 			echo "-Tablet Mode Enabled"
 			#disable the trackpoint
 			sudo evtest --grab /dev/input/event$tp > /dev/null 2>&1 &
@@ -80,7 +80,7 @@ inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111Rotate 
 	## Else, if the tmp file has ```value 0```, that means it is in laptop mode
 	else
 		if [ $alreadySet == "1" ]; then
-                        runas notify-send "Tablet Mode Disabled" "TrackPoint and TouchPad Enabled"
+                        runas notify-send --transient "Tablet Mode Disabled" "TrackPoint and TouchPad Enabled"
 			echo "-Tablet Mode Disabled"
 			kill $tpPid
 			echo "  -Trackpoint enabled. Process $tpPid was killed!"

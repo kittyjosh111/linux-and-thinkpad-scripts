@@ -1,7 +1,0 @@
-[Unit]
-Description=launcher for sys76pm service             
-[Service]
-Type=simple  
-ExecStart=/usr/local/bin/sys76pm
-[Install]
-WantedBy=default.target

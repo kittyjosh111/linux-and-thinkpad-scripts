@@ -30,11 +30,11 @@ function runas() {
 function checker() {
     ### This function checks pmtoggle to see whether the system is connected to power ###
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then #AC not attached
-        runas notify-send "Power Management" "AC disconnected. Applying changes."
+        runas notify-send --transient "Power Management" "AC disconnected. Applying changes."
         $ACOFF && $1 && $TURBO_OFF #odd numbered positional args are meant to run with ACOFF
         echo "> AC not attached. Applying changes..."
     else #AC attached
-        runas notify-send "Power Management" "AC connected. Applying changes."
+        runas notify-send --transient "Power Management" "AC connected. Applying changes."
         $ACON && $2 && $TURBO_ON #even numbered positional args are meant to run with ACON
         echo "> AC attached. Applying changes..."
     fi
@@ -53,7 +53,7 @@ function toggler() {
 # This ensures correct commands are assigned. Refer to comments in function CHECKER
 pmtoggle # If this be first boot, run pmtoggle manually
 if [[ "$TURBO" -eq "1" ]]; then
-  TURBO_ON="echo '1' | pkexec tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn off turbo boost
+  TURBO_ON="echo '1' | pkexec tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn on turbo boost
   TURBO_OFF="echo '0' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn off turbo boost
 fi
 
