@@ -8,6 +8,8 @@
 ACOFF="system76-power profile battery"
 #change ACON to the script you want to run when AC is connected. Keep entire command in quotations
 ACON="system76-power profile performance"
+#value to enable toggling turbo boost as well. 0 is disabled, 1 is enabled. Default is disabled (0)
+TURBO=0
 #change USERNAME if needed manually. This attempts to automatically determine your username
 USERNAME=$(who | grep "\(${_display_id}\)" | awk '{print $1}' | head -n 1)
 
@@ -29,11 +31,11 @@ function checker() {
     ### This function checks pmtoggle to see whether the system is connected to power ###
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then #AC not attached
         runas notify-send "Power Management" "AC disconnected. Applying changes."
-        $ACOFF && $1 && $3 #odd numbered positional args are meant to run with ACOFF
+        $ACOFF && $1 && $TURBO_OFF #odd numbered positional args are meant to run with ACOFF
         echo "> AC not attached. Applying changes..."
     else #AC attached
         runas notify-send "Power Management" "AC connected. Applying changes."
-        $ACON && $2 && $4 #even numbered positional args are meant to run with ACON
+        $ACON && $2 && $TURBO_ON #even numbered positional args are meant to run with ACON
         echo "> AC attached. Applying changes..."
     fi
 }
@@ -50,6 +52,11 @@ function toggler() {
 # When running toggler with positional args, alternate between commands to run with AC Off, then AC On, then AC Off, etc.
 # This ensures correct commands are assigned. Refer to comments in function CHECKER
 pmtoggle # If this be first boot, run pmtoggle manually
+if [[ "$TURBO" -eq "1" ]]; then
+  TURBO_ON="echo '1' | pkexec tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn off turbo boost
+  TURBO_OFF="echo '0' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn off turbo boost
+fi
+
 if ! [[ -z "$(ls /usr/bin/*-session | grep gnome)" ]]; then #check if we are on gnome
   echo "> Running on gnome..." #if yes, run toggler with additional gsettings args to toggle animations
   toggler "runas gsettings set org.gnome.desktop.interface enable-animations false" "runas gsettings set org.gnome.desktop.interface enable-animations true"
