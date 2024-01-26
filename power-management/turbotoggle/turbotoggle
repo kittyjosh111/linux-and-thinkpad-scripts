@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to toggle turbo boost for intel cpus.
 # Additionally toggles animations on GNOME
-USERNAME=joshuashi
+USERNAME=$(who | grep "\(${_display_id}\)" | awk '{print $1}' | head -n 1)
 
 # First define a function that can take in extra parameters if needed
 function toggler() {
