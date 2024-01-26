@@ -1,0 +1,7 @@
+[Unit]
+Description=launcher for powerpm service             
+[Service]
+Type=simple  
+ExecStart=/usr/local/bin/powerpm
+[Install]
+WantedBy=default.target

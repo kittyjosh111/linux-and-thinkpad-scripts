@@ -1,0 +1,35 @@
+#!/bin/bash
+#script to determine whether AC is attached, then modify a tmp file accordingly
+
+#  This script serves as and indicator to check AC status.
+#  We first create a file called "pmtoggle" in /tmp/.
+#  Then, if we have an AC attached, we write the value "0" to the file.
+#  Else, we write "1" to the file.
+
+#  External scripts can then look at /tmp/pmtoggle and act accordingly.
+#  For example, a script can turn on tuned's powersave profile if
+#  /tmp/pmtoggle is 0, and performance if it is 1
+
+#first, make sure the file is created
+if ! [ -f /tmp/pmtoggle ]; then
+    echo "No pmtoggle found. Creating as /tmp/pmtoggle" 
+    echo "pmtoggle" | tee /tmp/pmtoggle > /dev/null #write something random so $STATUS is set for later. Also prints to console.
+fi
+
+
+function toggler() {
+  STATUS=$(cat /tmp/pmtoggle)
+  if [ $STATUS == $1 ]; then
+    echo "Changes already applied. Ignoring udev changes..."
+  else
+    echo "$1" | tee /tmp/pmtoggle
+  fi
+}
+
+#then, figure out AC status and assign a value to tmp file
+AC=$(acpi -V | grep "off-line")
+if [ ! -z "$AC" ];then
+    toggler 0 #offline
+else
+    toggler 1 #online
+fi
