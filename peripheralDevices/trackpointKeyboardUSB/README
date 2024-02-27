@@ -1,0 +1,3 @@
+apply to quirk file by moving the /etc/libinput/
+
+Also on gnome use dconf editor -> peripherals to set pointing stick to flat profile. at least for me it helps

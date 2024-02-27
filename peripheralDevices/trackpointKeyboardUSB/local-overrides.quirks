@@ -1,0 +1,6 @@
+[Lenovo ThinkPad Compact USB Keyboard with TrackPoint]
+MatchName=Lenovo ThinkPad Compact USB Keyboard with TrackPoint
+MatchBus=usb
+MatchUdevType=pointingstick
+AttrTrackpointMultiplier=0.55
+AttrPointingStickIntegration=external
