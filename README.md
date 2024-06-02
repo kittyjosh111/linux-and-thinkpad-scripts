@@ -6,26 +6,29 @@ The folder name indicates what type of scripts or guides is contained within. If
 # devices and distros
 
 The scripts were used on the following distros:
-1) Fedora Linux 36
-2) Fedora Linux 37
-3) Fedora Linux 38
-4) Fedora Linux 39
+1) Fedora Linux 36-40
 
 It should work on other distros, but specifics of installation may change.
 
-The scripts were developed, tested, and sometimes remain on the following devices:
+scripts were developed, tested, and sometimes remain on the following devices:
 1) ThinkPad P16s (Intel) Gen 1 (2022)
 2) ThinkPad X1 Yoga (OLED) Gen 1 (2016)
 3) ThinkPad E540 (Intel) i5 4200M (2014)
 4) ThinkPad Yoga 370 / ThinkPad X380 Yoga (2017, 2018)
+
+Additionally, scripts in ```chromebook-duet``` were tested on:
+1) Lenovo IdeaPad Duet Chromebook 10.1 (google-krane)
+
+The OS utilized was PostmarketOS v23.12, edge, installed with pmbootstrap
 
 # various scripts
 
 There are a variety of scripts or guides included here including
 1) Running a QEMU Android machine
 2) Conversion script for DaVinci Resolve
-3) Power saving toggler using system76-power
-4) etc.
+3) General power-management with choice of backend (system76-power, ppd, tuned, etc)
+4) Toggling governors for ARM-style CPUs (ex Helio P60t has 4x Cortex-A73s and 4x Cortex-A53s)
+5) etc.
 
 # thinkpad problems fixed
 
@@ -35,7 +38,8 @@ The scripts attempt to address the following issues:
 2) X11 Screen flickering on an X1 Yoga
 3) Touchscreen right clicks
 4) Trackpoint and trackpad being disabled upon resuming from sleep in linux
-5) Yoga device rotation crash
+5) Thinkpad yoga device rotation crash
+6) PostmarketOS' powerprofilesctl not having any effect
 
 ---
 
@@ -56,3 +60,5 @@ The scripts attempt to address the following issues:
 - ```system76pm```: Script and systemd service aimed to make ```system76-power``` more automatic. ```system76-power``` has been much more efficient than ```power-profiles-daemon``` on my ThinkPad Yogas, but it always defaults to Balanced. ```system76pm``` will change between Performance and Battery modes depending on if you are connected to AC power, and will toggle animations on or off on GNOME.
 
 - ```thinkpads```: Configs specific to ThinkPads. Example include thinkfan configs for the P16s to make it run at tolerable noises, or a script to unload/reload rmi_smbus, thus reloading the clunkpad buttons after suspend.
+
+- ```chromebook-duet```: Configs specific to the google-krane (itself based on google-kukui). Ran on postmarketOS GNOME and Phosh.
