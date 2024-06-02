@@ -1,0 +1,57 @@
+#!/bin/bash
+# This is a script to monitor cpu freqs / apply governors to the MediaTek Helio P60T
+# This cpu has 4x Cortex-A53s (0xd03) and 4x Cortex-A73s (0xd09). Find more from /proc/cpuinfo
+# This is a good reference from the ARM community: https://community.arm.com/oss-platforms/w/docs/528/cpufreq-dvfs
+
+# First, we should identify which cpus are which.
+cpulist=$(grep -E "processor|part" /proc/cpuinfo | cut -d: -f2 | paste -s -d' \n')
+artemis=$(echo "$cpulist" | grep 0xd09 | cut -d ' ' -f 2) #these are the A73s codename Artemis
+apollo=$(echo "$cpulist" | grep 0xd03 | cut -d ' ' -f 2) #these are the A53s codename Apollo
+
+# Then we can figure out which two IDs to target. These are the minimum of each number list from above.
+# Notice how $apollo or $artemis do not have quotations around them this time.
+# By targetting the CPU with lowest index, it changes the governers for all of that type.
+min_artemis=$(echo $artemis | tr ' ' '\n' | sort -n | head -n 1) #minimum of artemis group
+min_apollo=$(echo $apollo | tr ' ' '\n' | sort -n | head -n 1) #minimum of apollo group
+
+#echo -e "\nFirst Cortex-A73: $min_artemis" #small debug
+#echo -e "First Cortex-A53: $min_apollo"
+
+while getopts 'hmg:' OPTION; do #flags!
+  case "$OPTION" in
+    g) #for governer changes
+      echo -e "\nChanging Governors..."
+      value="$OPTARG"
+      echo $value
+      case $value in
+        73p)
+          echo performance | pkexec tee /sys/devices/system/cpu/cpu$min_artemis/cpufreq/scaling_governor && echo "Cortex-A73s now in Performance" ;;
+        73o)
+          echo ondemand | pkexec tee /sys/devices/system/cpu/cpu$min_artemis/cpufreq/scaling_governor && echo "Cortex-A73s now in Ondemand" ;;
+        53p)
+          echo performance | pkexec tee /sys/devices/system/cpu/cpu$min_apollo/cpufreq/scaling_governor && echo "Cortex-A53s now in Performance" ;;
+        53o)
+          echo ondemand | pkexec tee /sys/devices/system/cpu/cpu$min_apollo/cpufreq/scaling_governor && echo "Cortex-A53s now in Ondemand" ;;
+        performance)
+          echo performance | pkexec tee -a /sys/devices/system/cpu/cpu$min_artemis/cpufreq/scaling_governor /sys/devices/system/cpu/cpu$min_apollo/cpufreq/scaling_governor && echo "All cores now in Performance" ;;
+        ondemand)
+          echo ondemand | pkexec tee -a /sys/devices/system/cpu/cpu$min_artemis/cpufreq/scaling_governor /sys/devices/system/cpu/cpu$min_apollo/cpufreq/scaling_governor && echo "All cores now in Ondemand" ;;
+        *)
+          echo "Unknown option passed to flag -g"
+      esac
+      ;;
+    m) #to show freqs
+      echo -e "\nMonitoring Frequencies..."
+      echo "First Cortex-A73 frequency: $(cat /sys/devices/system/cpu/cpu$min_artemis/cpufreq/scaling_cur_freq)" && echo "First Cortex-A73 governor: $(cat /sys/devices/system/cpu/cpu$min_artemis/cpufreq/scaling_governor)"
+      echo "First Cortex-A53 frequency: $(cat /sys/devices/system/cpu/cpu$min_apollo/cpufreq/scaling_cur_freq)" && echo "First Cortex-A53 governor: $(cat /sys/devices/system/cpu/cpu$min_apollo/cpufreq/scaling_governor)"  
+      ;;
+    h) #help
+      echo -e "\nusage: [-h] [-m] [-g] {73p, 73o, 53p, 53o, performance, power}\n\noptions:\n  -h    shows this help message\n  -m    shows the frequency and governor of the first A73 and first A53 cores\n  -g    changes the governor based on the argument passed in:\n          73p - Performance (A73 only)\n          73o - Ondemand (A73 only)\n          53p - Performance (A53 only)\n          53o - Ondemand (A53 only)\n          performance - Performance (All cores)\n          ondemand - Ondemand (All cores)" ;;
+    *) #fallback
+      echo -e "\nUnrecognized option. Nothing has been done. Use -h for help" ;;
+  esac
+done
+
+if [ $OPTIND -eq 1 ]; then echo "No options passed. Nothing has been done. Use -h for help"; fi #no options passed
+
+echo -e "\n" #one more space for pretty
