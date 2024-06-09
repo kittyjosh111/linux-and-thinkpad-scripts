@@ -1,18 +1,23 @@
 #!/bin/bash
-# script that relies on pmtoggle to create a file in /tmp
-# then activates a power profile change in response to changes in AC supply.
-# tested on GNOME. Should work on non-GNOME DEs
+# Script that applies automatic power management.
 
 ## Variables: (change as needed)
-#change ACOFF to the script you want to run when AC is not connected. Keep entire command in quotations
-ACOFF="system76-power profile battery"
-#change ACON to the script you want to run when AC is connected. Keep entire command in quotations
-ACON="system76-power profile performance"
-#value to enable toggling turbo boost as well. 0 is disabled, 1 is enabled. Default is disabled (0)
+# change ACOFF to the script you want to run when AC is not connected. Keep entire command in quotations
+ACOFF="powerprofilesctl set power-saver"
+# change ACON to the script you want to run when AC is connected. Keep entire command in quotations
+ACON="powerprofilesctl set performance"
+# value to enable toggling turbo boost as well. 0 is disabled, 1 is enabled. Default is disabled (0)
+#    if enabled, turbo boost is turned on when connected to power, and turned off when disconnected
 TURBO=0
-#value to enable turbo-load as well. 0 is disabled, 1 is enabled. Default is disabled (0)
+# value to enable turbo-load as well. 0 is disabled, 1 is enabled. Default is disabled (0)
+#    if enabled, the above functionality of TURBO will be overwritten.
+#    the behavior of TURBO_LOAD is that when connected to AC power, the script will poll
+#    your system load and turn on turbo boost accordingly. When not connected to power,
+#    this check is turned off and turbo boost status is left up to either TURBO or your power management backend.
 TURBO_LOAD=0
-#change USERNAME if needed manually. This attempts to automatically determine your username
+# change USERNAME if needed manually. This attempts to automatically determine your username
+#    your username is needed to run commands as a user, which is implemented to make notify-send work
+#    thus, if notify-send doesnt send anything, try manually setting USERNAME to your username
 USERNAME=$(who | grep "\(${_display_id}\)" | awk '{print $1}' | head -n 1)
 #USERNAME=
 
@@ -34,18 +39,14 @@ function checker() {
     ### This function checks pmtoggle to see whether the system is connected to power ###
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then #AC not attached
         runas notify-send --transient "Power Management" "AC disconnected. Applying changes."
-        $ACOFF #first toggle power profile
-        $1 #then do the optional args
-        $TURBO_OFF #then toggle turbo
+        $ACOFF && $1 && $TURBO_OFF #run the main automation
         if [ $TURBO_LOAD -eq 1 ]; then
             systemctl stop turbo-load.service
         fi
         echo "> AC not attached. Applying changes..."
     else #AC attached
         runas notify-send --transient "Power Management" "AC connected. Applying changes."
-        $ACON
-        $2
-        $TURBO_ON
+        $ACON && $2 && $TURBO_ON
         if [ $TURBO_LOAD -eq 1 ]; then
             systemctl restart turbo-load.service
         fi
@@ -65,7 +66,7 @@ function toggler() {
 # When running toggler with positional args, alternate between commands to run with AC Off, then AC On, then AC Off, etc.
 # This ensures correct commands are assigned. Refer to comments in function CHECKER
 pmtoggle # If this be first boot, run pmtoggle manually
-if [[ "$TURBO" -eq "1" ]]; then
+if [[ "$TURBO" == "1" ]]; then
   TURBO_ON="echo '1' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn on turbo boost
   TURBO_OFF="echo '0' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn off turbo boost
 fi
