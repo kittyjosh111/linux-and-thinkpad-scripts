@@ -1,0 +1,49 @@
+#!/bin/bash
+# Script to automatically turn on and off turbo boost given a threshold load value
+
+## Variables: (change as needed)
+#change THRESH_PERCENT to the percent of processing power (in decimal) before turbo boost is turned on
+#for example, in a 4 CPU configuration, a threshold_PERCENT of 0.5 would be when load reaches 2.0.
+#  TB is turned on when load is greater than 2.0, and turned off when it is less than 2.0.
+THRESH_PERCENT="0.05" #default 5% = 0.05
+#value to enable toggling cpu governors as well. 0 is disabled, 1 is enabled. Default is disabled (0)
+TOGGLE_GOVERNOR=0
+#if you want to execute commands when reaching over or under the threshold load, set the following to commands you want to execute.
+#  OVERLOAD runs when the current load goes over the threshold
+#  UNDERLOAD runs when the current load goes below the threshold
+OVERLOAD="powerprofilesctl set performance"
+UNDERLOAD="powerprofilesctl set balanced"
+
+######################################################################
+## DO NOT MODIFY BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING ##
+######################################################################
+
+echo "turbo-load started."
+if [ $TOGGLE_GOVERNOR -eq 1 ]; then
+  echo "custom scripts feature active."
+fi
+
+threshold_load="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$THRESH_PERCENT' ' | bc)" #calculate percent of total cores
+while true
+do
+  curr_load="$(uptime | grep -o 'load average:.*' |  cut -d ' ' -f 3 | cut -d ',' -f 1)" #gets current load (1 minute)
+  gt="$(echo "$curr_load > $threshold_load" | bc -l)" #returns 1 if curr_load > threshold_load, 0 otherwise
+  curr_turbo="$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)" #gets turbo status
+  echo "DEBUG: Current load is $curr_load. Threshold load is $threshold_load"
+  if [ $gt -eq 1 ] && [ $curr_turbo -eq 1 ]; then
+    #true, curr load is over threshold AND turbo is already off
+    echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    if [ $TOGGLE_GOVERNOR -eq 1 ]; then
+      $OVERLOAD
+    fi
+    echo "  - Current load of $curr_load is greater than threshold load value of $threshold_load. Turbo Boost turned on."
+  elif [ $gt -eq 0 ] && [ $curr_turbo -eq 0 ]; then
+    #false, curr load is under threshold AND turbo is already on
+    echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    if [ $TOGGLE_GOVERNOR -eq 1 ]; then
+      $UNDERLOAD
+    fi
+    echo "  - Current load of $curr_load is less than threshold load value of $threshold_load. Turbo Boost turned off."
+  fi
+  sleep 4
+done

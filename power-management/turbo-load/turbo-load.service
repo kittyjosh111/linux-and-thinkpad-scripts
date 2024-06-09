@@ -1,0 +1,7 @@
+[Unit]
+Description=launcher for turbo-load service             
+[Service]
+Type=simple  
+ExecStart=/usr/local/bin/turbo-load
+[Install]
+WantedBy=default.target
