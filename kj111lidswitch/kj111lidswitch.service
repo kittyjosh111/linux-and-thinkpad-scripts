@@ -1,0 +1,7 @@
+[Unit]
+Description=launcher for kj111lidswitch service             
+[Service]
+Type=simple  
+ExecStart=/usr/local/bin/kj111lidswitch
+[Install]
+WantedBy=default.target
