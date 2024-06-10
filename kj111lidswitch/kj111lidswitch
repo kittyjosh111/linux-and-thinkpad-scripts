@@ -1,0 +1,30 @@
+#!/bin/bash
+## Script to run scripts on lid open or close on ThinkPads using their Lid Switch device
+## Uses evtest to monitor hardware events
+## Tested on ThinkPad P16s Gen 1
+## Lid Switch - events for opening and closing the lid
+
+## We write evtest output to a file in /tmp. First remove it, as not doing so screws things up.
+rm /tmp/kj111lidswitch
+
+## Find the kernel ID for each of the devices needed, then log it to output.
+lidswitch=$(sudo libinput list-devices | grep "Lid Switch" -A 1 | grep "/dev/input/event*" | cut -c 35-) #Lid Switch ID
+evtest /dev/input/event$lidswitch > /tmp/kj111lidswitch 2>&1 & #here, don't grab it, just monitor it
+lidpid=$!
+sleep 2 #wait for tmp file to populate
+echo "lidswitch monitoring active. Evtest PID is $lidpid."
+
+## Polling is expensive. Let us use inotify.
+inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111lidswitch | while read changed; do
+    ## If the tmp file has ```value 1```, that means that lid closed
+    if [ ! -z "$(tail -n2 /tmp/kj111lidswitch | grep 'value 1')" ];then
+        systemctl stop fprintd && systemctl mask fprintd
+        echo "- Lid closed. fprintd has been stopped and fingerprint authentication should be disabled."
+    ## Else, if the tmp file has ```value 0```, that means that lid open
+    elif [ ! -z "$(tail -n2 /tmp/kj111lidswitch | grep 'value 0')" ];then
+        systemctl unmask fprintd && systemctl start fprintd
+        echo "- Lid open. fprintd has been started and fingerprint authentication should be enabled."
+    else
+        echo "- Lid state unknown. No actions taken."
+    fi
+done
