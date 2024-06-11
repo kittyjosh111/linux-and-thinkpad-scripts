@@ -1,41 +1,33 @@
-# background and reasoning
+# about and background and reasoning and ...
 
-Turns out there's a lot of power management scripts or packages available. Each seem to have their own pros and cons, whether it be from the integration of GNOME with power-profiles-daemon, or the extreme power-saving capabilities of system76-power. However, ootb most of these power management scripts don't seem to change automatically in response to power source changes, and it isn't really convenient to have to open a terminal and enter a command every time I connect and disconnect from an external power source. Simply put, if I am on power, I want maximum performance. If I am not connected to power, I want the most power-saving features activated.
+Power management on Linux is something I find that most major distributions don't do too well at automating. For example, Fedora and Ubuntu use powerprofilesctl to set CPU governor and EPP, but require you to manually toggle the button in GNOME's control center. Additionally, there is no good built-in way to toggle turbo boost without using CLI or an external extension. Some DEs also don't even ship with power management, which though reasonable on desktops or servers, is not very good for laptops. Thus, I've wanted a way to have automatic power management for computers.
 
-Sounds like one of TLP's options. And yet, I want to be able to manually switch off from power-saver to balanced if I need that extra boost in performance on the go. So while TLP is more advanced and has finer control over disk, processor, graphics, etc, I don't see myself using all of them, and I would still appreciate the ability to manually give more performance on the go, which I don't think TLP can do that easily.
+I do realize there have been projects such as [auto-cpufreq](https://github.com/AdnanHodzic/auto-cpufreq) that do what I am suggesting, but I either have had issues (for auto-cpufreq, my i7 1260p seems to forever be stuck at 0.9 GHz even in performance mode), or they don't allow users to make easy changes on the go (what if I need a boost of performance while off power with TLP?)
 
-Besides, GNOME refuses to render animations well on any power profile other than the equivalent of power-profiles-daemon's Performance profie. While it would look nice to have functioning animations while I am in power-saver mode, it is also extremely unbearable to watch how choppy these animations end up being. Thus, it would be great to have a script to toggle animations on GNOME in addition to automatic power-profile switching.
+What I really need is a way to automate switching between performance, balanced, and powersave modes based on AC status and system load. I don't care whether its powerprofilesctl, tuned, or system76-power, I just need something that can run commands to change power settings. Oh, and turbo boost too.
 
-# install
+To that end, system76pm was my first attempt to do so. I had used system76-power previously and just made a check on AC status to toggle either performance or power modes.
 
-- Move ```pmtoggle``` from the folder "pmtoggle" to /usr/local/bin.
+The legacy folder contain legacy scripts which are no longer used.
 
-- Move ```99-pmtoggle.rules``` from the folder "pmtoggle" to /etc/udev/rules.d/.
+**The current generation of scripts is in ```powerpm-suite```.** The components are below:
 
-- Move ```powerpm``` from the folder "powerpm" to /usr/local/bin. Open it up and edit the values for ```AC_ON```, ```AC_OFF```, ```TURBO``` as needed. If later you find out that certain commands from powerpm are not being run properly as root, specify ```USERNAME``` with your usename and comment out the provided value for it.
+1) ```pmtoggle```: pmtoggle stands for "power management toggle", and is essentially a udev rules that writes a file to /tmp/, then populates it with 0 for disconnected from AC, and 1 for connected. **You should install this first, else other components such as powerpm will not work**. To install, go into the folder named pmtoggle and follow the instructions.
 
-- Move ```powerpm.service``` from the folder "powerpm" to /etc/systemd/system/. Enable it. Check status to see if you need to implement the aforementioned fix.
+2) ```powerpm```: powerpm is a script that waits for ```pmtoggle``` to make changes to the file in /tmp/ and then decides which power profile to apply in response to AC presence. The user can set which commands to run on AC connection and disconnection, which means you can use any power management you want such as power-profiles-daemon, tuned, system76-power, etc. Additionally, it uses notify-send to send notifications on AC status changes. There is the additional option to enable turbo boost toggling (boost on with AC connected, boost off with AC disconnected), and enable/disable the co-activation of the ```turbo-load``` script. To install, go into the folder named powerpm. **Make sure to read the instructions**.
 
-- If your power management backend automatically sets a profile every time the computer wakes from lock/suspend (system76pm does this), you may also need to move ```powerpm-restart.service``` into /etc/systemd/system. Also enable this.
+3) ```turbo-load```: turbo-load is a script that changes turbo boost status in response to system load. Often, turbo-boost is on by default and causes massive heat generation when not needed. For example, my i7 1260p can idle at 60 degrees when turbo boost is on, but goes down to 50 when boost is off. What if we could automatically turn on/off boost based on how busy the system is? We can check system load by running ```uptime``` and getting the first value. [This](https://docs.rackspace.com/docs/check-the-system-load-on-linux) was a good resource for me about system load. Thus, if we set a certain threshold load (which could be a percentage of the total load = percentage * total CPU count), then we can turn off turbo boost when the load is under the threshold (computer probably idling or doing less intensive tasks), or turn on turbo boost when the load is over the threshold (computer is probably busy and could use the frequency boost of turbo boost). This percentage probably depends on your preference and core count, so try different values out. ```turbo-load``` can run standalone, but works great in conjunction with ```powerpm```.
 
-- Reboot to apply the new udev rules and test out the systemctl activation.
+# installation and requirements
 
-# implementation and logic
+These scripts rely on some packages. Namely:
 
-Udev can monitor for changes in ```power_supply```. Quite useful to tell if we are on battery or connected to external power. Once we have a udev rule in place, we can then use it to trigger another script that writes a file to /tmp/ which carries a value of 0 or 1, representing battery and external power, respectively. This is how ```pmtoggle``` works.
+- ```inotify-tools```: inotify is used to provide a more efficient alternative to just polling. It triggers commands on response to a monitored file being changed.
 
-Since we now have a file in /tmp/ that automatically updates in response to power supply changes, we can use other scripts to read for changes in this file and act accordingly. One such implementation is ```powerpm```.
+- ```notify-send```: notify-send is used to notify users about stuff.
 
-```powerpm``` takes in a command to run when disconnected and connected to external power. Internally, these variables are ```AC_OFF``` and ```AC_ON``` respectively. You can then supply whichever power management backend you want, and I have tested power-profiles-daemon, tuned-adm, and system76-power. Find out the command to trigger you equivalent of power-saver, battery, and performance, then put them into ```AC_OFF``` and ```AC_ON```.
+- ```systemctl```: Yep, we use systemd. Unfortunate.
 
-If ```/tmp/pmtoggle``` is 0, that means we are in battery mode, and ```AC_OFF``` is run. On the other hand, ```AC_ON``` is run if ```/tmp/pmtoggle``` is 1.
+- ```udev```: udev rules in response to hardware changes.
 
-```powerpm``` can also be configured to toggle turbo boost (tested on intel only). Oftentimes, disabling turbo boost saves power and makes the machine run quieter, making a useful change to do when disconnected from external power. Some scripts already have control over turbo boost, including system76-power.
-
-By default, ```powerpm``` does not alter turbo boost whether you are on battery or connected to external power. By setting the variable ```TURBO``` to a non-zero value in ```powerpm```, you can make it turn boost off on battery power, and turn boost on when connected to external power.
-
-Finally, if ```powerpm``` detects you are running on GNOME, it will attempt to turn off animations if you are on battery power, and re-enable them when connected to external power. This attempts to remove the problem of choppy animations on power-saving modes by just removing them altogether.
-
-# other notes
-
-If you want to manually change power profiles, you can still do so using the command line or a GUI extension such as Guillotine / Command Center on GNOME. ```powerpm``` will not change the power profile automatically until the next time you connect or disconnect from power, so keep in mind that the profile switch only happens on each connect/disconnect from external power, and won't be checked at other times.
+These are the package names on Fedora. For other distros, find the equivalent packages.
