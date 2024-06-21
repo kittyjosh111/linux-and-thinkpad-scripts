@@ -39,14 +39,18 @@ function checker() {
     ### This function checks pmtoggle to see whether the system is connected to power ###
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then #AC not attached
         runas notify-send --transient "Power Management" "AC disconnected. Applying changes."
-        $ACOFF && $1 && $TURBO_OFF #run the main automation
+        $ACOFF
+        $1
+        $TURBO_OFF #run the main commands separately, else no work
         if [ $TURBO_LOAD -eq 1 ]; then
             systemctl stop turbo-load.service
         fi
         echo "> AC not attached. Applying changes..."
     else #AC attached
         runas notify-send --transient "Power Management" "AC connected. Applying changes."
-        $ACON && $2 && $TURBO_ON
+        $ACON
+        $2
+        $TURBO_ON
         if [ $TURBO_LOAD -eq 1 ]; then
             systemctl restart turbo-load.service
         fi
