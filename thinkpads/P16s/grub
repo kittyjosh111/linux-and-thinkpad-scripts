@@ -1,2 +1,1 @@
-psmouse.resetafter=0
-psmouse.rate=200
+psmouse.resetafter=1 psmouse.rate=120
