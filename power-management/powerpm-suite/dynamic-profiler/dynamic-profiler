@@ -1,0 +1,54 @@
+#!/bin/bash
+# Script to automatically turn on and off turbo boost given a threshold load value
+
+## Variables: (change as needed)
+# threshold percentages for upper and lower limits
+# change to the percent of processing power (in decimal 
+# for example, in a 4 CPU configuration, a value of 0.5 would be when load reaches 2.0.
+LOWER_THRESH="0.055"
+UPPER_THRESH="0.085"
+# power profile commands
+# set these up to match your power profile backend
+#  Performance is run after load exceeds UPPER_THRESH
+#  Balanced is run in the middle of the two limits
+#  Power is run when lower than LOWER_THRESH
+PERFORMANCE="tuned-adm profile throughput-performance"
+BALANCED="tuned-adm profile balanced"
+POWER="tuned-adm profile powersave"
+# whether to enable turbo boost toggling. 1 is enabled, 0 is disabled
+TURBO_CHANGE=1
+
+######################################################################
+## DO NOT MODIFY BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING ##
+######################################################################
+
+echo "load-tuning started."
+lower_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$LOWER_THRESH' ' | bc)" #calculate using LOWER_THRESH and total core count
+upper_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$UPPER_THRESH' ' | bc)" #now with UPPER_THRESH
+echo "thresholds set: $lower_threshold / $upper_threshold"
+while true
+do
+  curr_load="$(uptime | grep -o 'load average:.*' |  cut -d ' ' -f 3 | cut -d ',' -f 1)" #gets current load (1 minute)
+  upper_check="$(echo "$curr_load > $upper_threshold" | bc -l)" #returns 1 if curr_load > upper_threshold, 0 otherwise
+  lower_check="$(echo "$curr_load > $lower_threshold" | bc -l)" #returns 1 if curr_load > lower_threshold, 0 otherwise
+  if [ $upper_check -eq 1 ]; then
+    $PERFORMANCE
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "  - Current load of $curr_load is greater than upper threshold load value of $upper_threshold. Performance mode enabled."
+  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ]; then
+    $BALANCED
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "  - Current load of $curr_load is between upper threshold value of $upper_threshold and lower threshold value of $lower_threshold. Balanced mode enabled."
+  elif [ $lower_check -eq 0 ]; then
+    $POWER
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "  - Current load of $curr_load is less than lower threshold value of $lower_threshold. Powersave mode enabled."
+  fi
+  sleep 2
+done
