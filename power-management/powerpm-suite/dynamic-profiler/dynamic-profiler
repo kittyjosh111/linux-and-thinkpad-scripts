@@ -3,9 +3,9 @@
 
 ## Variables: (change as needed)
 # threshold percentages for upper and lower limits
-# change to the percent of processing power (in decimal 
+# change to the percent of processing power (in decimal)
 # for example, in a 4 CPU configuration, a value of 0.5 would be when load reaches 2.0.
-LOWER_THRESH="0.015"
+LOWER_THRESH="0.005"
 UPPER_THRESH="0.075"
 # power profile commands
 # set these up to match your power profile backend
@@ -90,17 +90,20 @@ power_set () {
 
 while true
 do
-  cpu=$[100-$(vmstat 1 2|tail -1|awk '{print $15}')]
-  curr_load="$(uptime | grep -o 'load average:.*' |  cut -d ' ' -f 3 | cut -d ',' -f 1)" #gets current load (1 minute)
+  top_get="$(top -bn1 | grep -e 'load average' -e 'Cpu(s)')"
+  curr_load="$(echo "$top_get" | head -n 1 | awk '{print $11;}' | tr ',' ' ')"
+  cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
   upper_check="$(echo "$curr_load > $upper_threshold" | bc -l)" #returns 1 if curr_load > upper_threshold, 0 otherwise
   lower_check="$(echo "$curr_load > $lower_threshold" | bc -l)" #returns 1 if curr_load > lower_threshold, 0 otherwise
-  if [ $upper_check -eq 1 ] && [ $cpu -ge $CPU_THRESHOLD ]; then
+  cpu_check="$(echo "$cpu > $CPU_THRESHOLD" | bc -l)"
+
+  if [ $upper_check -eq 1 ] && [ $cpu_check -eq 1 ]; then
     performance_set
-  elif [ $upper_check -eq 1 ] && [ $cpu -lt $CPU_THRESHOLD ]; then
+  elif [ $upper_check -eq 1 ] && [ $cpu_check -eq 0 ]; then
     balanced_performance_set
-  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu -ge $CPU_THRESHOLD ]; then
+  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu_check -eq 1 ]; then
     balanced_performance_set
-  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu -lt $CPU_THRESHOLD ]; then
+  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu_check -eq 0 ]; then
     balanced_power_set
   elif [ $lower_check -eq 0 ]; then
     power_set
