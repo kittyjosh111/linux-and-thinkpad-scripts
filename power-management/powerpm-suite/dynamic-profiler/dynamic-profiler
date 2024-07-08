@@ -90,8 +90,8 @@ power_set () {
 
 while true
 do
-  top_get="$(top -bn1 | grep -e 'load average' -e 'Cpu(s)')"
-  curr_load="$(echo "$top_get" | head -n 1 | awk '{print $11;}' | tr ',' ' ')"
+  top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
+  curr_load="$(echo "$top_get" | head -n 1 | awk '{print $3;}' | tr ',' ' ')"
   cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
   upper_check="$(echo "$curr_load > $upper_threshold" | bc -l)" #returns 1 if curr_load > upper_threshold, 0 otherwise
   lower_check="$(echo "$curr_load > $lower_threshold" | bc -l)" #returns 1 if curr_load > lower_threshold, 0 otherwise
