@@ -3,9 +3,9 @@
 
 ## Variables: (change as needed)
 # change ACOFF to the script you want to run when AC is not connected. Keep entire command in quotations
-ACOFF="powerprofilesctl set power-saver"
+ACOFF="tuned-adm profile powersave"
 # change ACON to the script you want to run when AC is connected. Keep entire command in quotations
-ACON="powerprofilesctl set performance"
+ACON="tuned-adm profile throughput-performance"
 # value to enable toggling turbo boost as well. 0 is disabled, 1 is enabled. Default is disabled (0)
 #    if enabled, turbo boost is turned on when connected to power, and turned off when disconnected
 TURBO=0
@@ -37,20 +37,31 @@ function runas() {
 
 function checker() {
     ### This function checks pmtoggle to see whether the system is connected to power ###
+    ### I used to have this not be a bunch of if statements, but it would work inconsistently for some reaons ###
     if [ ! -z "$(tail -n2 /tmp/pmtoggle | grep '0')" ]; then #AC not attached
         runas notify-send --transient "Power Management" "AC disconnected. Applying changes."
         $ACOFF
-        $1
-        $TURBO_OFF #run the main commands separately, else no work
+        if ! [[ -z "$(ls /usr/bin/*-session | grep gnome)" ]]; then #check if we are on gnome
+            echo "> Running on gnome..." #if yes, run toggler with additional gsettings args to toggle animations
+            runas gsettings set org.gnome.desktop.interface enable-animations false
+        fi
         if [ $DYNAMIC_PROFILER -eq 1 ]; then
             systemctl stop dynamic-profiler.service
+        fi
+        if [[ "$TURBO" == "1" ]]; then
+            echo '1' | tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn off turbo boost
         fi
         echo "> AC not attached. Applying changes..."
     else #AC attached
         runas notify-send --transient "Power Management" "AC connected. Applying changes."
         $ACON
-        $2
-        $TURBO_ON
+        if ! [[ -z "$(ls /usr/bin/*-session | grep gnome)" ]]; then #check if we are on gnome
+            echo "> Running on gnome..." #if yes, run toggler with additional gsettings args to toggle animations
+            runas gsettings set org.gnome.desktop.interface enable-animations true
+        fi
+        if [[ "$TURBO" == "1" ]] && [ $DYNAMIC_PROFILER -ne 1 ]; then
+            echo '0' | tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn on turbo boost, else let dynamic profiler work
+        fi
         if [ $DYNAMIC_PROFILER -eq 1 ]; then
             systemctl restart dynamic-profiler.service
         fi
@@ -60,25 +71,14 @@ function checker() {
 
 function toggler() {
     ### Function to run CHECKER and monitor PMTOGGLE through inexpensive polling ###
-    checker "$1" "$2" #run once first in case
+    checker #run once first in case
     inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/pmtoggle | while read changed; do
-        checker "$1" "$2"
+        checker
     done
 }
 
 ## Main flow:
 # When running toggler with positional args, alternate between commands to run with AC Off, then AC On, then AC Off, etc.
-# This ensures correct commands are assigned. Refer to comments in function CHECKER
 pmtoggle # If this be first boot, run pmtoggle manually
-if [[ "$TURBO" == "1" ]]; then
-  TURBO_ON="echo '1' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn on turbo boost
-  TURBO_OFF="echo '0' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo" #turn off turbo boost
-fi
-
-if ! [[ -z "$(ls /usr/bin/*-session | grep gnome)" ]]; then #check if we are on gnome
-  echo "> Running on gnome..." #if yes, run toggler with additional gsettings args to toggle animations
-  toggler "runas gsettings set org.gnome.desktop.interface enable-animations false" "runas gsettings set org.gnome.desktop.interface enable-animations true"
-else
-  echo "> Not running on gnome..." #if not on gnome, run toggler normally
-  toggler
-fi
+sleep 1
+toggler
