@@ -47,6 +47,7 @@ function checker() {
         fi
         if [ $DYNAMIC_PROFILER -eq 1 ]; then
             systemctl stop dynamic-profiler.service
+            systemctl restart dynamic-profiler-batt.service
         fi
         if [[ "$TURBO" == "1" ]]; then
             echo '1' | tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn off turbo boost
@@ -63,6 +64,7 @@ function checker() {
             echo '0' | tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn on turbo boost, else let dynamic profiler work
         fi
         if [ $DYNAMIC_PROFILER -eq 1 ]; then
+            systemctl stop dynamic-profiler-batt.service
             systemctl restart dynamic-profiler.service
         fi
         echo "> AC attached. Applying changes..."

@@ -5,18 +5,18 @@
 # threshold percentages for upper and lower limits
 # change to the percent of processing power (in decimal)
 # for example, in a 4 CPU configuration, a value of 0.5 would be when load reaches 2.0.
-LOWER_THRESH="0.050"
-UPPER_THRESH="0.100"
+LOWER_THRESH="0.10"
+UPPER_THRESH="0.15"
 # power profile commands
 # set these up to match your power profile backend
 #  Performance is run after load exceeds UPPER_THRESH
 #  Balanced is run in the middle of the two limits
 #  Power is run when lower than LOWER_THRESH
-PERFORMANCE="tuned-adm profile throughput-performance"
+PERFORMANCE="tuned-adm profile balanced"
 BALANCED="tuned-adm profile balanced"
 POWER="tuned-adm profile powersave-fix"
 #
-CPU_THRESHOLD="20"
+CPU_THRESHOLD="75"
 # whether to enable turbo boost toggling. 1 is enabled, 0 is disabled
 TURBO_CHANGE=1
 
@@ -25,22 +25,22 @@ TURBO_CHANGE=1
 ######################################################################
 
 #initial vars
-echo "dynamic-profiler started"
+echo "dynamic-profiler-batt started"
 lower_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$LOWER_THRESH' ' | bc)" #calculate using LOWER_THRESH and total core count
 upper_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$UPPER_THRESH' ' | bc)" #now with UPPER_THRESH
 echo "thresholds set: $lower_threshold / $upper_threshold"
 
-rm /tmp/dynamic-profiler
+rm /tmp/dynamic-profiler-batt
 
 #precheck tmp file
-if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file
-  echo "No tmp file found. Creating as /tmp/dynamic-profiler"
-  touch /tmp/dynamic-profiler > /dev/null
+if ! [ -f /tmp/dynamic-profiler-batt ]; then #create a tmp file
+  echo "No tmp file found. Creating as /tmp/dynamic-profiler-batt"
+  touch /tmp/dynamic-profiler-batt > /dev/null
 fi
 
 #define functions
 check_tmp () { #if already set, don't continue
-  if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
+  if [[ $(cat /tmp/dynamic-profiler-batt) == "$1" ]]; then
     return 1
   fi
 }
@@ -52,7 +52,7 @@ performance_set () {
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Performance Mode set!"
-    echo "performance" | tee /tmp/dynamic-profiler > /dev/null
+    echo "performance" | tee /tmp/dynamic-profiler-batt > /dev/null
   fi
 }
 
@@ -63,7 +63,7 @@ balanced_performance_set () {
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Balanced-Performance Mode set!"
-    echo "balanced-performance" | tee /tmp/dynamic-profiler > /dev/null
+    echo "balanced-performance" | tee /tmp/dynamic-profiler-batt > /dev/null
   fi
 }
 
@@ -74,7 +74,7 @@ balanced_power_set () {
       echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Balanced-Power Mode set!"
-    echo "balanced-power" | tee /tmp/dynamic-profiler > /dev/null
+    echo "balanced-power" | tee /tmp/dynamic-profiler-batt > /dev/null
   fi
 }
 
@@ -85,10 +85,9 @@ power_set () {
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Power Mode set!"
-    echo "power" | tee /tmp/dynamic-profiler > /dev/null
+    echo "power" | tee /tmp/dynamic-profiler-batt > /dev/null
   fi
 }
-
 
 while true
 do
