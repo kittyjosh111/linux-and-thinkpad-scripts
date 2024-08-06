@@ -82,7 +82,7 @@ power_set () {
   if check_tmp "power"; then
     $POWER
     if [ $TURBO_CHANGE -eq 1 ]; then
-      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Power Mode set!"
     echo "power" | tee /tmp/dynamic-profiler > /dev/null
