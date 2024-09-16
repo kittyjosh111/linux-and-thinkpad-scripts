@@ -40,8 +40,13 @@ fi
 
 #define functions
 check_tmp () { #if already set, don't continue
-  if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
-    return 1
+  if [ -f /tmp/dynamic-profiler-lock ]; then
+    echo "locked" | tee /tmp/dynamic-profiler > /dev/null
+    return 2
+  else
+    if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
+      return 1
+    fi
   fi
 }
 
