@@ -30,18 +30,23 @@ lower_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$
 upper_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$UPPER_THRESH' ' | bc)" #now with UPPER_THRESH
 echo "thresholds set: $lower_threshold / $upper_threshold"
 
-rm /tmp/dynamic-profiler-batt
+rm /tmp/dynamic-profiler
 
 #precheck tmp file
-if ! [ -f /tmp/dynamic-profiler-batt ]; then #create a tmp file
-  echo "No tmp file found. Creating as /tmp/dynamic-profiler-batt"
-  touch /tmp/dynamic-profiler-batt > /dev/null
+if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file
+  echo "No tmp file found. Creating as /tmp/dynamic-profiler"
+  touch /tmp/dynamic-profiler > /dev/null
 fi
 
 #define functions
 check_tmp () { #if already set, don't continue
-  if [[ $(cat /tmp/dynamic-profiler-batt) == "$1" ]]; then
-    return 1
+  if [ -f /tmp/dynamic-profiler-lock ]; then
+    echo "locked" | tee /tmp/dynamic-profiler > /dev/null
+    return 2
+  else
+    if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
+      return 1
+    fi
   fi
 }
 
@@ -52,7 +57,7 @@ performance_set () {
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Performance Mode set!"
-    echo "performance" | tee /tmp/dynamic-profiler-batt > /dev/null
+    echo "performance" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
@@ -63,7 +68,7 @@ balanced_performance_set () {
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Balanced-Performance Mode set!"
-    echo "balanced-performance" | tee /tmp/dynamic-profiler-batt > /dev/null
+    echo "balanced-performance" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
@@ -74,7 +79,7 @@ balanced_power_set () {
       echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Balanced-Power Mode set!"
-    echo "balanced-power" | tee /tmp/dynamic-profiler-batt > /dev/null
+    echo "balanced-power" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
@@ -85,7 +90,7 @@ power_set () {
       echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
     fi
     echo "Power Mode set!"
-    echo "power" | tee /tmp/dynamic-profiler-batt > /dev/null
+    echo "power" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
