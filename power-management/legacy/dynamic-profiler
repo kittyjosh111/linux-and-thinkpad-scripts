@@ -1,0 +1,122 @@
+#!/bin/bash
+# Script to automatically turn on and off turbo boost given a threshold load value
+
+## Variables: (change as needed)
+# threshold percentages for upper and lower limits
+# change to the percent of processing power (in decimal)
+# for example, in a 4 CPU configuration, a value of 0.5 would be when load reaches 2.0.
+LOWER_THRESH="0.050"
+UPPER_THRESH="0.100"
+# power profile commands
+# set these up to match your power profile backend
+#  Performance is run after load exceeds UPPER_THRESH
+#  Balanced is run in the middle of the two limits
+#  Power is run when lower than LOWER_THRESH
+PERFORMANCE="tuned-adm profile throughput-performance"
+BALANCED="tuned-adm profile balanced"
+POWER="tuned-adm profile powersave-fix"
+#
+CPU_THRESHOLD="20"
+# whether to enable turbo boost toggling. 1 is enabled, 0 is disabled
+TURBO_CHANGE=1
+
+######################################################################
+## DO NOT MODIFY BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING ##
+######################################################################
+
+#initial vars
+echo "dynamic-profiler started"
+lower_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$LOWER_THRESH' ' | bc)" #calculate using LOWER_THRESH and total core count
+upper_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$UPPER_THRESH' ' | bc)" #now with UPPER_THRESH
+echo "thresholds set: $lower_threshold / $upper_threshold"
+
+rm /tmp/dynamic-profiler
+
+#precheck tmp file
+if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file
+  echo "No tmp file found. Creating as /tmp/dynamic-profiler"
+  touch /tmp/dynamic-profiler > /dev/null
+fi
+
+#define functions
+check_tmp () { #if already set, don't continue
+  if [ -f /tmp/dynamic-profiler-lock ]; then
+    echo "locked" | tee /tmp/dynamic-profiler > /dev/null
+    return 2
+  else
+    if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
+      return 1
+    fi
+  fi
+}
+
+performance_set () {
+  if check_tmp "performance"; then
+    $PERFORMANCE
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "Performance Mode set!"
+    echo "performance" | tee /tmp/dynamic-profiler > /dev/null
+  fi
+}
+
+balanced_performance_set () {
+  if check_tmp "balanced-performance"; then
+    $BALANCED
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "Balanced-Performance Mode set!"
+    echo "balanced-performance" | tee /tmp/dynamic-profiler > /dev/null
+  fi
+}
+
+balanced_power_set () {
+  if check_tmp "balanced-power"; then
+    $BALANCED
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "Balanced-Power Mode set!"
+    echo "balanced-power" | tee /tmp/dynamic-profiler > /dev/null
+  fi
+}
+
+power_set () {
+  if check_tmp "power"; then
+    $POWER
+    if [ $TURBO_CHANGE -eq 1 ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    fi
+    echo "Power Mode set!"
+    echo "power" | tee /tmp/dynamic-profiler > /dev/null
+  fi
+}
+
+
+while true
+do
+  top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
+  curr_load="$(echo "$top_get" | head -n 1 | awk '{print $3;}' | tr ',' ' ')"
+  cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
+  upper_check="$(echo "$curr_load > $upper_threshold" | bc -l)" #returns 1 if curr_load > upper_threshold, 0 otherwise
+  lower_check="$(echo "$curr_load > $lower_threshold" | bc -l)" #returns 1 if curr_load > lower_threshold, 0 otherwise
+  cpu_check="$(echo "$cpu > $CPU_THRESHOLD" | bc -l)"
+
+  if [ $upper_check -eq 1 ] && [ $cpu_check -eq 1 ]; then
+    performance_set
+  elif [ $upper_check -eq 1 ] && [ $cpu_check -eq 0 ]; then
+    balanced_performance_set
+  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu_check -eq 1 ]; then
+    balanced_performance_set
+  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu_check -eq 0 ]; then
+    balanced_power_set
+  elif [ $lower_check -eq 0 ]; then
+    power_set
+  else
+    echo "DEBUG: Default case"
+    balanced_power_set #default
+  fi
+  sleep 2
+done

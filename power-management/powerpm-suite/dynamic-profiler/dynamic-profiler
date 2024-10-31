@@ -1,35 +1,40 @@
 #!/bin/bash
-# Script to automatically turn on and off turbo boost given a threshold load value
 
-## Variables: (change as needed)
-# threshold percentages for upper and lower limits
-# change to the percent of processing power (in decimal)
-# for example, in a 4 CPU configuration, a value of 0.5 would be when load reaches 2.0.
-LOWER_THRESH="0.050"
-UPPER_THRESH="0.100"
 # power profile commands
-# set these up to match your power profile backend
-#  Performance is run after load exceeds UPPER_THRESH
-#  Balanced is run in the middle of the two limits
-#  Power is run when lower than LOWER_THRESH
+# set these up to match your power profile backend (power-profiles, tuned, etc)
+# they don't have to be all different! For example, you can set all three to powersave if you want.
 PERFORMANCE="tuned-adm profile throughput-performance"
 BALANCED="tuned-adm profile balanced"
-POWER="tuned-adm profile powersave-fix"
-#
-CPU_THRESHOLD="20"
-# whether to enable turbo boost toggling. 1 is enabled, 0 is disabled
-TURBO_CHANGE=1
+POWER="tuned-adm profile balanced"
+
+# cpu threshold at which to activate turbo boost
+TURBO_CPU_THRESHOLD="55"
+
+# at what change in load values should the power governer automatically switch to PERFORMANCE
+# load deltas are just difference in load values between 4 seconds. For example, 1.82 - 1.20 = 0.62
+LOAD_DELTA_THRESHOLD="0.35"
+
+# limits at which to switch to a more powerful or weaker power governor
+# generally, you can treat LOWER_CPU_THRESHOLD as the point between POWER and BALANCED
+# HIGHER_CPU_LIMIT is the point between BALANCED and PERFORMANCE
+# For example, if you have a cpu usage greater than LOWER_CPU_THRESHOLD but lower than HIGHER_CPU_THRESHOLD,
+# you will most likely have the BALANCED profile set.
+LOWER_CPU_THRESHOLD="35"
+HIGHER_CPU_THRESHOLD="65"
+
+# prints out the load delta and cpu usage as debugs to logs. The format as follows:
+# LOAD DELTA: -4, CPU: 3, NO_TURBO: 1
+# Load deltas are reported in HUNDREDTHS! (15 = 0.15 difference)
+# No_turbo values are 1 (turbo off), and 0 (turbo on)
+# no matter this setting, you will see messages of the switches between power profiles
+# Set DEBUG_LOG to 1 to enable it, any other value to disable it
+DEBUG_LOG=0 #default disabled
 
 ######################################################################
 ## DO NOT MODIFY BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING ##
 ######################################################################
 
-#initial vars
-echo "dynamic-profiler started"
-lower_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$LOWER_THRESH' ' | bc)" #calculate using LOWER_THRESH and total core count
-upper_threshold="$(echo 'scale=2; '$(grep processor /proc/cpuinfo | wc -l)' * '$UPPER_THRESH' ' | bc)" #now with UPPER_THRESH
-echo "thresholds set: $lower_threshold / $upper_threshold"
-
+# Script to automatically change power management settings based on system usage.
 rm /tmp/dynamic-profiler
 
 #precheck tmp file
@@ -39,84 +44,94 @@ if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file
 fi
 
 #define functions
-check_tmp () { #if already set, don't continue
+check_tmp () {
   if [ -f /tmp/dynamic-profiler-lock ]; then
-    echo "locked" | tee /tmp/dynamic-profiler > /dev/null
+    echo "locked" | tee /tmp/dynamic-profiler > /dev/null #allows us to lock and pause this script
     return 2
-  else
+  else #no lock file found
     if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
       return 1
     fi
   fi
 }
 
+turbo_set () {
+  cpu_check="$(echo "$1 > $TURBO_CPU_THRESHOLD" | bc -l)"
+  turbo=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
+  if [ $cpu_check -eq 1 ]; then
+    if [ $turbo == "1" ]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn on boost
+    fi
+  else
+    if [ $turbo == "0" ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn off boost
+    fi
+  fi
+  turbo=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo) #redefine it for debugger
+}
+
 performance_set () {
   if check_tmp "performance"; then
     $PERFORMANCE
-    if [ $TURBO_CHANGE -eq 1 ]; then
-      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-    fi
     echo "Performance Mode set!"
     echo "performance" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
-balanced_performance_set () {
-  if check_tmp "balanced-performance"; then
+balanced_set () {
+  if check_tmp "balanced"; then
     $BALANCED
-    if [ $TURBO_CHANGE -eq 1 ]; then
-      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-    fi
-    echo "Balanced-Performance Mode set!"
-    echo "balanced-performance" | tee /tmp/dynamic-profiler > /dev/null
-  fi
-}
-
-balanced_power_set () {
-  if check_tmp "balanced-power"; then
-    $BALANCED
-    if [ $TURBO_CHANGE -eq 1 ]; then
-      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-    fi
-    echo "Balanced-Power Mode set!"
-    echo "balanced-power" | tee /tmp/dynamic-profiler > /dev/null
+    echo "Balanced Mode set!"
+    echo "balanced" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
 power_set () {
   if check_tmp "power"; then
     $POWER
-    if [ $TURBO_CHANGE -eq 1 ]; then
-      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-    fi
     echo "Power Mode set!"
     echo "power" | tee /tmp/dynamic-profiler > /dev/null
   fi
 }
 
+debug_log () {
+  if [[ $DEBUG_LOG == 1 ]]; then
+    echo "LOAD DELTA: $int_load_diff, CPU: $cpu, NO_TURBO: $turbo"
+  fi
+}
 
+## Main loop
 while true
 do
+  #Get CPU info
   top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
-  curr_load="$(echo "$top_get" | head -n 1 | awk '{print $3;}' | tr ',' ' ')"
   cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
-  upper_check="$(echo "$curr_load > $upper_threshold" | bc -l)" #returns 1 if curr_load > upper_threshold, 0 otherwise
-  lower_check="$(echo "$curr_load > $lower_threshold" | bc -l)" #returns 1 if curr_load > lower_threshold, 0 otherwise
-  cpu_check="$(echo "$cpu > $CPU_THRESHOLD" | bc -l)"
+  int_cpu=$(printf "%.*f\n" 0 $cpu) #simplify calculations later on
 
-  if [ $upper_check -eq 1 ] && [ $cpu_check -eq 1 ]; then
-    performance_set
-  elif [ $upper_check -eq 1 ] && [ $cpu_check -eq 0 ]; then
-    balanced_performance_set
-  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu_check -eq 1 ]; then
-    balanced_performance_set
-  elif [ $upper_check -eq 0 ] && [ $lower_check -eq 1 ] && [ $cpu_check -eq 0 ]; then
-    balanced_power_set
-  elif [ $lower_check -eq 0 ]; then
+  #Get Load difference info
+  load_1="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
+  sleep 4 #gather data
+  load_2="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
+  load_diff="$(echo $load_2 - $load_1 | bc)"
+  load_diff_100=$(echo "$load_diff*100" | bc) #its easier to get an int for bash calculations
+  int_load_diff=$(printf "%.*f\n" 0 $load_diff_100) #conversion to int
+  load_delta_100=$(echo "$LOAD_DELTA_THRESHOLD*100" | bc) #make sure scale is the same
+  int_load_delta=$(printf "%.*f\n" 0 $load_delta_100) #conversion to in
+
+  if [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -lt $LOWER_CPU_THRESHOLD ]]; then
     power_set
-  else
-    echo "DEBUG: Default case"
-    balanced_power_set #default
+  elif [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
+    balanced_set
+  elif [[ $int_load_diff -ge $int_load_delta ]]; then #like an AP depolarization
+    performance_set
+  elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
+    performance_set
+  elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -gt $LOWER_CPU_THRESHOLD ]]; then
+    balanced_set
+  #else
+    #echo "edge case, nothing done" #this really is an edge case, but it allows us to keep previous settings
   fi
-  sleep 2
+  turbo_set $int_cpu
+  debug_log
 done
+
