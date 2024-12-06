@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart powerpm after resume
+After=suspend.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/systemctl --no-block restart fix-rotate.service
+
+[Install]
+WantedBy=suspend.target
