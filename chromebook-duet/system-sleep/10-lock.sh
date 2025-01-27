@@ -3,8 +3,9 @@ case $1/$2 in
   pre/*)
     loginctl lock-sessions
     sleep 1
-    #echo "locked, now suspending" >> /tmp/kj111-system-sleep
+    echo "locked before suspension..." > /tmp/kj111-system-sleep
     ;;
   post/*)
-    #echo "I slept, thank you very much" >> /tmp/kj111-system-sleep
+    #rm -rf /home/*/.config/pulse #if you want to use this, set it up manually
+    echo "...woke from suspension" >> /tmp/kj111-system-sleep
 esac
