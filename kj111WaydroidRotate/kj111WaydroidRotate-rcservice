@@ -1,0 +1,10 @@
+#!/sbin/openrc-run
+
+name="kj111waydroidrotate"
+description="waydroid rotation thing"
+
+command=/usr/local/bin/kj111WaydroidRotate
+
+depend() {
+  use waydroid-container
+}
