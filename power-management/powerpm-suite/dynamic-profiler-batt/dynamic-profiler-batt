@@ -45,13 +45,8 @@ fi
 
 #define functions
 check_tmp () {
-  if [ -f /tmp/dynamic-profiler-lock ]; then
-    echo "locked" | tee /tmp/dynamic-profiler > /dev/null #allows us to lock and pause this script
-    return 2
-  else #no lock file found
-    if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
-      return 1
-    fi
+  if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
+    return 1
   fi
 }
 
@@ -71,7 +66,9 @@ turbo_set () {
 }
 
 performance_set () {
-  if check_tmp "performance"; then
+  check_tmp "performance"
+  check_ret=$?
+  if [[ $check_ret != 1 ]]; then
     $PERFORMANCE
     echo "Performance Mode set!"
     echo "performance" | tee /tmp/dynamic-profiler > /dev/null
@@ -79,7 +76,9 @@ performance_set () {
 }
 
 balanced_set () {
-  if check_tmp "balanced"; then
+  check_tmp "balanced"
+  check_ret=$?
+  if [[ $check_ret != 1 ]]; then
     $BALANCED
     echo "Balanced Mode set!"
     echo "balanced" | tee /tmp/dynamic-profiler > /dev/null
@@ -87,7 +86,9 @@ balanced_set () {
 }
 
 power_set () {
-  if check_tmp "power"; then
+  check_tmp "power"
+  check_ret=$?
+  if [[ $check_ret != 1 ]]; then
     $POWER
     echo "Power Mode set!"
     echo "power" | tee /tmp/dynamic-profiler > /dev/null
@@ -103,35 +104,51 @@ debug_log () {
 ## Main loop
 while true
 do
-  #Get CPU info
-  top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
-  cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
-  int_cpu=$(printf "%.*f\n" 0 $cpu) #simplify calculations later on
+  if [ -f /tmp/dynamic-profiler-lock ]; then
+    #curr_stat = "$(cat /tmp/dynamic-profiler)" #different logic for a different day
+    #if [[ $curr_stat == "power" ]]; then
+    #  echo "" | tee /tmp/dynamic-profiler > /dev/null
+    #  power_set
+    #elif [[ $curr_stat == "balanced" ]]; then
+    #  echo "" | tee /tmp/dynamic-profiler > /dev/null
+    #  balanced_set
+    #elif [[ $curr_stat == "performance" ]]; then
+    #  echo "" | tee /tmp/dynamic-profiler > /dev/null
+    #  performance_set
+    #fi
+    #echo "locked" | tee /tmp/dynamic-profiler > /dev/null
+    sleep 4
+  else
+    #Get CPU info
+    top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
+    cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
+    int_cpu=$(printf "%.*f\n" 0 $cpu) #simplify calculations later on
 
-  #Get Load difference info
-  load_1="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
-  sleep 4 #gather data
-  load_2="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
-  load_diff="$(echo $load_2 - $load_1 | bc)"
-  load_diff_100=$(echo "$load_diff*100" | bc) #its easier to get an int for bash calculations
-  int_load_diff=$(printf "%.*f\n" 0 $load_diff_100) #conversion to int
-  load_delta_100=$(echo "$LOAD_DELTA_THRESHOLD*100" | bc) #make sure scale is the same
-  int_load_delta=$(printf "%.*f\n" 0 $load_delta_100) #conversion to in
+    #Get Load difference info
+    load_1="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
+    sleep 4 #gather data
+    load_2="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
+    load_diff="$(echo $load_2 - $load_1 | bc)"
+    load_diff_100=$(echo "$load_diff*100" | bc) #its easier to get an int for bash calculations
+    int_load_diff=$(printf "%.*f\n" 0 $load_diff_100) #conversion to int
+    load_delta_100=$(echo "$LOAD_DELTA_THRESHOLD*100" | bc) #make sure scale is the same
+    int_load_delta=$(printf "%.*f\n" 0 $load_delta_100) #conversion to in
 
-  if [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -lt $LOWER_CPU_THRESHOLD ]]; then
-    power_set
-  elif [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
-    balanced_set
-  elif [[ $int_load_diff -ge $int_load_delta ]]; then #like an AP depolarization
-    performance_set
-  elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
-    performance_set
-  elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -gt $LOWER_CPU_THRESHOLD ]]; then
-    balanced_set
-  #else
-    #echo "edge case, nothing done" #this really is an edge case, but it allows us to keep previous settings
+    if [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -lt $LOWER_CPU_THRESHOLD ]]; then
+      power_set
+    elif [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
+      balanced_set
+    elif [[ $int_load_diff -ge $int_load_delta ]]; then #like an AP depolarization
+      performance_set
+    elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
+      performance_set
+    elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -gt $LOWER_CPU_THRESHOLD ]]; then
+      balanced_set
+    #else
+      #echo "edge case, nothing done" #this really is an edge case, but it allows us to keep previous settings
+    fi
+    turbo_set $int_cpu
+    debug_log
   fi
-  turbo_set $int_cpu
-  debug_log
 done
 
