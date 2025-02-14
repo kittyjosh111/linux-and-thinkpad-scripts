@@ -1,26 +1,44 @@
 #!/bin/bash
 
-# power profile commands
+## POWER PROFILE COMMANDS ##
 # set these up to match your power profile backend (power-profiles, tuned, etc)
 # they don't have to be all different! For example, you can set all three to powersave if you want.
-PERFORMANCE="tuned-adm profile throughput-performance"
-BALANCED="tuned-adm profile balanced"
-POWER="tuned-adm profile balanced"
 
-# cpu threshold at which to activate turbo boost
-TURBO_CPU_THRESHOLD="55"
+# The following three are designed to be run when connected to an AC power source.
+AC_PERFORMANCE="tuned-adm profile throughput-performance"
+AC_BALANCED="tuned-adm profile throughput-performance"
+AC_POWER="tuned-adm profile balanced"
+# The following three are designed to be run when on battery.
+BAT_PERFORMANCE="tuned-adm profile balanced"
+BAT_BALANCED="tuned-adm profile powersave"
+BAT_POWER="tuned-adm profile powersave"
 
+## CPU THRESHOLDS ##
+# Once cpu usage is greater than the threshold, turbo boost is activated.
+# Once again, the first value is for AC, the second for battery mode.
+AC_TURBO_CPU_THRESHOLD="45"
+BAT_TURBO_CPU_THRESHOLD="55"
+
+## LOAD DELTA THRESHOLDS ##
 # at what change in load values should the power governer automatically switch to PERFORMANCE
 # load deltas are just difference in load values between 4 seconds. For example, 1.82 - 1.20 = 0.62
-LOAD_DELTA_THRESHOLD="0.35"
+# Once again, the first value is for AC, the second for battery mode.
+AC_LOAD_DELTA_THRESHOLD="0.30"
+BAT_LOAD_DELTA_THRESHOLD="0.35"
 
+## GOVERNOR SWITCHING (CPU USAGE) ##
 # limits at which to switch to a more powerful or weaker power governor
 # generally, you can treat LOWER_CPU_THRESHOLD as the point between POWER and BALANCED
 # HIGHER_CPU_LIMIT is the point between BALANCED and PERFORMANCE
 # For example, if you have a cpu usage greater than LOWER_CPU_THRESHOLD but lower than HIGHER_CPU_THRESHOLD,
 # you will most likely have the BALANCED profile set.
-LOWER_CPU_THRESHOLD="35"
-HIGHER_CPU_THRESHOLD="65"
+
+# The following two are designed to be used when connected to an AC power source.
+AC_LOWER_CPU_THRESHOLD="25"
+AC_HIGHER_CPU_THRESHOLD="45"
+# The following two are designed to be run when on battery.
+BAT_LOWER_CPU_THRESHOLD="35"
+BAT_HIGHER_CPU_THRESHOLD="65"
 
 # prints out the load delta and cpu usage as debugs to logs. The format as follows:
 # LOAD DELTA: -4, CPU: 3, NO_TURBO: 1
@@ -102,9 +120,31 @@ debug_log () {
 }
 
 ## Main loop
+IS_LOCKED=0
 while true
 do
+  if [[ $(cat /tmp/pmtoggle) == "1" ]]; then
+      PERFORMANCE="$AC_PERFORMANCE"
+      BALANCED="$AC_BALANCED"
+      POWER="$AC_POWER"
+      TURBO_CPU_THRESHOLD="$AC_TURBO_CPU_THRESHOLD"
+      LOAD_DELTA_THRESHOLD="$AC_LOAD_DELTA_THRESHOLD"
+      LOWER_CPU_THRESHOLD="$AC_LOWER_CPU_THRESHOLD"
+      HIGHER_CPU_THRESHOLD="$AC_HIGHER_CPU_THRESHOLD"
+  else
+      PERFORMANCE="$BAT_PERFORMANCE"
+      BALANCED="$BAT_BALANCED"
+      POWER="$BAT_POWER"
+      TURBO_CPU_THRESHOLD="$BAT_TURBO_CPU_THRESHOLD"
+      LOAD_DELTA_THRESHOLD="$BAT_LOAD_DELTA_THRESHOLD"
+      LOWER_CPU_THRESHOLD="$BAT_LOWER_CPU_THRESHOLD"
+      HIGHER_CPU_THRESHOLD="$BAT_HIGHER_CPU_THRESHOLD"
+  fi
   if [ -f /tmp/dynamic-profiler-lock ]; then
+    if [[ "$IS_LOCKED" != "1" ]]; then
+      echo "Lock file found. Waiting for manual instruction."
+      IS_LOCKED=1
+    fi
     echo "" | tee /tmp/dynamic-profiler > /dev/null
     if [ -f /tmp/dynamic-profiler-turbo-on ]; then
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null 
@@ -113,24 +153,28 @@ do
     elif [ -f /tmp/dynamic-profiler-turbo-off ]; then
       echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
       echo "Turbo Mode disabled manually"
-      rm /tmp/dynamic-profiler-turbo-off
+      rm /tmp/dynamic-profiler-turbo-off > /dev/null
     fi
     if [ -f /tmp/dynamic-profiler-manual ]; then
       man_sett=$(cat /tmp/dynamic-profiler-manual)
       if [[ $man_sett == "performance" ]]; then
           $PERFORMANCE
-          echo "Performance Mode set manually"
+          echo "Performance Mode set manually."
       elif [[ $man_sett == "balanced" ]]; then
           $BALANCED
-          echo "Balanced Mode set manually"
+          echo "Balanced Mode set manually."
       elif [[ $man_sett == "power" ]]; then
           $POWER
-          echo "Power Mode set manually"
+          echo "Power Mode set manually."
       fi
-      rm /tmp/dynamic-profiler-manual
+      rm /tmp/dynamic-profiler-manual > /dev/null
     fi
     sleep 4
   else
+    if [[ "$IS_LOCKED" == "1" ]]; then
+      echo "Lock file removed. Resuming automatic management."
+      IS_LOCKED=0
+    fi
     #Get CPU info
     top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
     cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
