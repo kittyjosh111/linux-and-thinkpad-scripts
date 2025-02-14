@@ -18,6 +18,8 @@ The legacy folder contain legacy scripts which are no longer used.
 
 3) ```dynamic-profiler``` /  ```dynamic-profiler-batt```: these are scripts that read your system load and cpu usage to determine whether to apply a power, performance, or balanced governor + boost preset to your system. For example, having heavy load AND heavy CPU usage will enable a performance preset and turn on turbo boost. If you only have heavy load but not heavy CPU usage, then performance preset is applied, but NOT turbo boost. The *-batt version is meant to run on battery power (by reading pmtoggle), but I am in the process of combining both of them into one, due to how identical the logic for applying presets are. Edit the executables to change the thresholds for applying presets, as well as what commands to actually run in the preset. Default power management backend uses tuned, but you can replace this with system76-power, ppd, etc. Additionally, you can temporarily block this script from applying changes by creating a file named ```dynamic-profiler-lock``` in /tmp. Once this file is removed, the script will resume applying power management changes.
 
+  - Note, dynamic-profiler does what powerpm does, except it has a few seconds of delay and applies dynamic power management. While you can use both at the same time, powerpm is technically not needed to run dynamic-profiler anymore.
+
 # installation and requirements
 
 These scripts rely on some packages. Namely:
