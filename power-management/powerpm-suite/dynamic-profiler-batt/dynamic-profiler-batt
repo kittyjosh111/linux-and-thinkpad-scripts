@@ -105,18 +105,29 @@ debug_log () {
 while true
 do
   if [ -f /tmp/dynamic-profiler-lock ]; then
-    #curr_stat = "$(cat /tmp/dynamic-profiler)" #different logic for a different day
-    #if [[ $curr_stat == "power" ]]; then
-    #  echo "" | tee /tmp/dynamic-profiler > /dev/null
-    #  power_set
-    #elif [[ $curr_stat == "balanced" ]]; then
-    #  echo "" | tee /tmp/dynamic-profiler > /dev/null
-    #  balanced_set
-    #elif [[ $curr_stat == "performance" ]]; then
-    #  echo "" | tee /tmp/dynamic-profiler > /dev/null
-    #  performance_set
-    #fi
-    #echo "locked" | tee /tmp/dynamic-profiler > /dev/null
+    if [ -f /tmp/dynamic-profiler-turbo-on ]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null 
+      echo "Turbo Mode enabled manually"
+      rm /tmp/dynamic-profiler-turbo-on
+    elif [ -f /tmp/dynamic-profiler-turbo-off ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+      echo "Turbo Mode disabled manually"
+      rm /tmp/dynamic-profiler-turbo-off
+    fi
+    if [ -f /tmp/dynamic-profiler-manual ]; then
+      man_sett=$(cat /tmp/dynamic-profiler-manual)
+      if [[ $man_sett == "performance" ]]; then
+          $PERFORMANCE
+          echo "Performance Mode set manually"
+      elif [[ $man_sett == "balanced" ]]; then
+          $BALANCED
+          echo "Balanced Mode set manually"
+      elif [[ $man_sett == "power" ]]; then
+          $POWER
+          echo "Power Mode set manually"
+      fi
+      rm /tmp/dynamic-profiler-manual
+    fi
     sleep 4
   else
     #Get CPU info
