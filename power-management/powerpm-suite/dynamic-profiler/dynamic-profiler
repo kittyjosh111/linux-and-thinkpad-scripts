@@ -105,6 +105,7 @@ debug_log () {
 while true
 do
   if [ -f /tmp/dynamic-profiler-lock ]; then
+    echo "" | tee /tmp/dynamic-profiler > /dev/null
     if [ -f /tmp/dynamic-profiler-turbo-on ]; then
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null 
       echo "Turbo Mode enabled manually"
