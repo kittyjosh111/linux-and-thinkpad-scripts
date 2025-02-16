@@ -63,7 +63,12 @@ echo "Prerun steps completed."
 ## now we can run a loop to constantly run rot_map
 echo "Main loop started..."
 while true; do
-  curr_rotation="$(monitor-sensor --accel & cmonPID=$!; sleep 0.05; kill $cmonPID)"
-  rot_map "$curr_rotation"
-  sleep 0.5
+  way_stat="$(waydroid status)"
+  if [ ! -z "$way_stat" ]; then
+    curr_rotation="$(monitor-sensor --accel & cmonPID=$!; sleep 0.05; kill $cmonPID)"
+    rot_map "$curr_rotation"
+    sleep 0.5
+  else
+    sleep 2
+  fi
 done
