@@ -28,6 +28,8 @@ This directory contains various tweaks, frustrations, and QOL changes I've imple
 
 4) Suspension: This has been a huge issue for me. Oftentimes, pmOS would fail to suspend, or get stuck in a loop when waking from suspend. This seems to have been solved somewhat in 24.12, but I still sometimes have to deal with it failing to wake up at all after a long sleep. Additionally, it seems that on GNOME, the device fails to lock before suspending, so additional elogind confs might be needed.
 
+5) Minor issue, theres graphical issues with GTK on GNOME. As per postmarketOS, you need to set GSK_RENDERER=gl somewhere.
+
 ---
 
 Overall, I'd say the Duet isn't a bad device. If you're ok with chromeOS, its actually a nice and cheap tablet with almost the full ChromeOS feature set, all stuck into a 10 inch screen. Battery runtime is good, the screen is relatively sharp, and the keyboard is as expected of Lenovo. The fact that pure linux can run on it is the cherry on top for me. Even though there's some issues, you can often find workarounds or experience the real joy of troubleshooting and discovering your own solutions.
