@@ -92,6 +92,7 @@ do
       if [[ "$PMTOGGLE" != 1 ]]; then
         echo "Connected to AC. Switching to AC mode."
         PMTOGGLE=1
+        echo "reset" | tee /tmp/dynamic-profiler > /dev/null #reapply current settings
       fi
       PERFORMANCE="$AC_PERFORMANCE"
       BALANCED="$AC_BALANCED"
@@ -104,6 +105,7 @@ do
       if [[ "$PMTOGGLE" != "0" ]]; then
         echo "Disconnected from AC. Switching to battery mode."
         PMTOGGLE=0
+        echo "reset" | tee /tmp/dynamic-profiler > /dev/null
       fi
       PERFORMANCE="$BAT_PERFORMANCE"
       BALANCED="$BAT_BALANCED"
