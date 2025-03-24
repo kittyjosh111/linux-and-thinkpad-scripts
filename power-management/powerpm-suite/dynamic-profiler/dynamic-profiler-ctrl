@@ -1,0 +1,136 @@
+#!/bin/bash
+
+######################################################################
+## DO NOT MODIFY BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING ##
+######################################################################
+
+# define the "profile" functions
+
+power () {
+  touch /tmp/dynamic-profiler-lock 2> /dev/null
+  echo "power" | tee /tmp/dynamic-profiler-manual > /dev/null
+}
+
+balanced () {
+  touch /tmp/dynamic-profiler-lock 2> /dev/null
+  echo "balanced" | tee /tmp/dynamic-profiler-manual > /dev/null
+}
+
+performance () {
+  touch /tmp/dynamic-profiler-lock 2> /dev/null
+  echo "performance" | tee /tmp/dynamic-profiler-manual > /dev/null
+}
+
+reset () {
+  rm /tmp/dynamic-profiler-lock 2> /dev/null
+  rm /tmp/dynamic-profiler-manual 2> /dev/null
+  rm /tmp/dynamic-profiler-turbo* 2> /dev/null
+}
+
+turbo-on () {
+  touch /tmp/dynamic-profiler-lock 2> /dev/null
+  touch /tmp/dynamic-profiler-turbo-on 2> /dev/null
+}
+
+turbo-off () {
+  touch /tmp/dynamic-profiler-lock 2> /dev/null
+  touch /tmp/dynamic-profiler-turbo-off 2> /dev/null
+}
+
+print-all () {
+  . /etc/dynamic-profiler.conf 2> /dev/null
+  if [[ $(cat /tmp/pmtoggle) == "1" ]]; then
+    PERFORMANCE="$AC_PERFORMANCE"
+    BALANCED="$AC_BALANCED"
+    POWER="$AC_POWER"
+  else
+    PERFORMANCE="$BAT_PERFORMANCE"
+    BALANCED="$BAT_BALANCED"
+    POWER="$BAT_POWER"
+  fi
+  if [ -f /tmp/dynamic-profiler-lock ]; then
+    echo -e "[NOTICE] dynamic-profiler is currently running in manual mode.\n"
+  fi
+  curr_power="$(cat /tmp/dynamic-profiler)"
+  curr_turbo="$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)"
+  if [[ "$curr_turbo" == "1" ]]; then
+    turbo_message="Turbo Boost: Off"
+  else
+    turbo_message="Turbo Boost: On"
+  fi
+  if [[ "$curr_power" == "performance" ]]; then
+    echo -e "* performance:\n    Command: $PERFORMANCE\n    $turbo_message"
+  else
+    echo -e "  performance:\n    Command: $PERFORMANCE"
+  fi
+  if [[ "$curr_power" == "balanced" ]]; then
+    echo -e "* balanced:\n    Command: $BALANCED\n    $turbo_message"
+  else
+    echo -e "  balanced:\n    Command: $BALANCED"
+  fi
+  if [[ "$curr_power" == "power" ]]; then
+    echo -e "* power:\n    Command: $POWER\n    $turbo_message"
+  else
+    echo -e "  power:\n    Command: $POWER"
+  fi
+  echo -e "\nThe current active profile is: $curr_power"
+}
+
+# and main logic thing
+
+if [[ "$#" -le 0 ]]; then
+  print-all
+fi
+
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    -r | --reset | reset)
+      reset
+      echo "dynamic-profiler has been reset to automatic control."
+      break
+      ;;
+    -p | --profile | profile | set)
+      shift
+      if [[ -n "$1" ]]; then
+        if [[ "$1" == "performance" ]]; then
+          performance
+          echo -e "Performance Mode activated."
+        elif [[ "$1" == "balanced" ]]; then
+          balanced
+          echo -e "Balanced Mode activated."
+        elif [[ "$1" == "power" || "$1" == "powersave" ]]; then
+          powersave
+          echo -e "Power Saving Mode activated."
+        else
+          echo -e "[ERROR] Invalid profile name passed in to profile option. Accepted values are:\n- performance\n- balanced\n- power"
+        fi
+      else
+        print-all
+      fi
+      shift
+      ;;
+    -t | --turbo | turbo | boost)
+      shift
+      if [[ -n "$1" ]]; then
+        if [[ "$1" == "on" ]]; then
+          turbo-on
+          echo -e "Turbo Boost activated."
+        elif [[ "$1" == "off" ]]; then
+          turbo-off
+          echo -e "Turbo Boost deactivated."
+        else
+          echo -e "[ERROR] Invalid argument passed in to turbo boost option. Accepted values are:\n- on\n- off"
+        fi
+      fi
+      shift
+      ;;
+    -h | --help | help)
+      echo -e "The following arguments are recognized by dynamic-profiler-ctrl:\n\n  -p | --profile | profile [VALUE]:\n    Manually activate a profile. Accepted values are performance, balanced, or power.\n    Leave blank to view dynamic-profiler stats.\n  -t | --turbo | turbo [VALUE]:\n    Manually activate/deactivate turbo boost. Accepted values are on or off.\n  -r | --reset | reset :\n    Reset dynamic-profiler to automatic control."
+      break
+      ;;
+    *)
+      shift
+      echo "Unidentified argument found. Use -h flag for help."
+      ;;
+   esac
+done

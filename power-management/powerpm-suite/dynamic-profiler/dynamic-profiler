@@ -92,7 +92,7 @@ do
       if [[ "$PMTOGGLE" != 1 ]]; then
         echo "Connected to AC. Switching to AC mode."
         PMTOGGLE=1
-        echo "reset" | tee /tmp/dynamic-profiler > /dev/null #reapply current settings
+        echo "reset" | tee /tmp/dynamic-profiler > /dev/null
       fi
       PERFORMANCE="$AC_PERFORMANCE"
       BALANCED="$AC_BALANCED"
@@ -116,19 +116,22 @@ do
       HIGHER_CPU_THRESHOLD="$BAT_HIGHER_CPU_THRESHOLD"
   fi
   if [ -f /tmp/dynamic-profiler-lock ]; then
+    old_mode="$(cat /tmp/dynamic-profiler)"
     if [[ "$IS_LOCKED" != "1" ]]; then
       echo "Lock file found. Waiting for manual instruction."
+      echo "locked" | tee /tmp/dynamic-profiler > /dev/null
       IS_LOCKED=1
     fi
-    echo "locked" | tee /tmp/dynamic-profiler > /dev/null
     if [ -f /tmp/dynamic-profiler-turbo-on ]; then
       echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
       echo "Turbo Mode enabled manually"
-      rm /tmp/dynamic-profiler-turbo-on
+      rm /tmp/dynamic-profiler-turbo-on > /dev/null
+      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
     elif [ -f /tmp/dynamic-profiler-turbo-off ]; then
       echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
       echo "Turbo Mode disabled manually"
       rm /tmp/dynamic-profiler-turbo-off > /dev/null
+      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
     fi
     if [ -f /tmp/dynamic-profiler-manual ]; then
       man_sett=$(cat /tmp/dynamic-profiler-manual)
@@ -143,6 +146,7 @@ do
           echo "Power Mode set manually."
       fi
       rm /tmp/dynamic-profiler-manual > /dev/null
+      echo "$man_sett" | tee /tmp/dynamic-profiler > /dev/null
     fi
     sleep 4
   else
