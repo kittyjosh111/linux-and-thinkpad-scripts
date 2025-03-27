@@ -79,13 +79,26 @@ power_set () {
 
 debug_log () {
   if [[ $DEBUG_LOG == 1 ]]; then
-    echo "LOAD DELTA: $int_load_diff, CPU: $cpu, NO_TURBO: $turbo"
+    echo "LOAD DELTA: $int_load_diff, CPU: $cpu, NO_TURBO: $turbo, POWER_LEVEL: $POWER_LEVEL"
+  fi
+}
+
+profile_set () {
+  if [[ "$1" -le 0 ]]; then
+    POWER_LEVEL=0
+    power_set
+  elif [[ "$1" -ge 2 ]]; then
+    POWER_LEVEL=2
+    performance_set
+  else
+    balanced_set
   fi
 }
 
 ## Main loop
-IS_LOCKED=0
-PMTOGGLE=5
+POWER_LEVEL=1 #0 for powersave, +1 to balanced, +1 to perf
+IS_LOCKED=0 #0 for no, 1 for yes
+PMTOGGLE=5 #sorry, habit from zscripting
 while true
 do
   if [[ $(cat /tmp/pmtoggle) == "1" ]]; then
@@ -116,8 +129,8 @@ do
       HIGHER_CPU_THRESHOLD="$BAT_HIGHER_CPU_THRESHOLD"
   fi
   if [ -f /tmp/dynamic-profiler-lock ]; then
-    old_mode="$(cat /tmp/dynamic-profiler)"
     if [[ "$IS_LOCKED" != "1" ]]; then
+      old_mode="$(cat /tmp/dynamic-profiler)"
       echo "Lock file found. Waiting for manual instruction."
       echo "locked" | tee /tmp/dynamic-profiler > /dev/null
       IS_LOCKED=1
@@ -136,19 +149,21 @@ do
     if [ -f /tmp/dynamic-profiler-manual ]; then
       man_sett=$(cat /tmp/dynamic-profiler-manual)
       if [[ $man_sett == "performance" ]]; then
-          $PERFORMANCE
-          echo "Performance Mode set manually."
+        $PERFORMANCE
+        echo "Performance Mode set manually."
       elif [[ $man_sett == "balanced" ]]; then
-          $BALANCED
-          echo "Balanced Mode set manually."
+        $BALANCED
+        echo "Balanced Mode set manually."
       elif [[ $man_sett == "power" ]]; then
-          $POWER
-          echo "Power Mode set manually."
+        $POWER
+        echo "Power Mode set manually."
+      else
+        echo "Unknown manual mode. No action taken."
       fi
       rm /tmp/dynamic-profiler-manual > /dev/null
       echo "$man_sett" | tee /tmp/dynamic-profiler > /dev/null
     fi
-    sleep 4
+    sleep $POLL_INTERVAL
   else
     if [[ "$IS_LOCKED" == "1" ]]; then
       echo "Lock file removed. Resuming automatic management."
@@ -158,30 +173,28 @@ do
     top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
     cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
     int_cpu=$(printf "%.*f\n" 0 $cpu) #simplify calculations later on
-
     #Get Load difference info
     load_1="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
-    sleep 4 #gather data
+    sleep $POLL_INTERVAL #gather data
     load_2="$(echo $(uptime) | grep -o -e 'load average.*' | awk '{print $3;}' | tr ',' ' ')"
     load_diff="$(echo $load_2 - $load_1 | bc)"
     load_diff_100=$(echo "$load_diff*100" | bc) #its easier to get an int for bash calculations
     int_load_diff=$(printf "%.*f\n" 0 $load_diff_100) #conversion to int
     load_delta_100=$(echo "$LOAD_DELTA_THRESHOLD*100" | bc) #make sure scale is the same
-    int_load_delta=$(printf "%.*f\n" 0 $load_delta_100) #conversion to in
+    int_load_delta=$(printf "%.*f\n" 0 $load_delta_100) #conversion to int
 
-    if [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -lt $LOWER_CPU_THRESHOLD ]]; then
-      power_set
-    elif [[ $int_load_diff -lt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
-      balanced_set
-    elif [[ $int_load_diff -ge $int_load_delta ]]; then #like an AP depolarization
-      performance_set
-    elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
-      performance_set
-    elif [[ $int_load_diff -gt 0 ]] && [[ $int_cpu -gt $LOWER_CPU_THRESHOLD ]]; then
-      balanced_set
-    #else
-      #echo "edge case, nothing done" #this really is an edge case, but it allows us to keep previous settings
+    if [[ $int_load_diff -le $int_load_delta ]] && [[ $int_cpu -le $LOWER_CPU_THRESHOLD ]]; then
+      POWER_LEVEL=$(($POWER_LEVEL - 1)) #move up a level if load is too large BUT cpu threshold isn't met
+    elif [[ $int_load_diff -le $int_load_delta ]]; then
+      true #LMAO, just stay in place if load is less than trigger and CPU usage is doing something
+    elif [[ $int_load_diff -gt $int_load_delta ]] && [[ $int_cpu -ge $HIGHER_CPU_THRESHOLD ]]; then
+      POWER_LEVEL=$(($POWER_LEVEL + 2)) #instantly jump to performance mode, as the CPU is going ham AND the load is up
+    elif [[ $int_load_diff -gt $int_load_delta ]]; then
+      POWER_LEVEL=$(($POWER_LEVEL + 1)) #but only move up one if load is going up but CPU isn't doing too much
+    else
+      true #something unexpected, just stay in place
     fi
+    profile_set $POWER_LEVEL
     turbo_set $int_cpu
     debug_log
   fi
