@@ -1,0 +1,167 @@
+#!/bin/bash
+
+# This is some horrible coding. I hope it works
+
+#1. Find android using ADB.
+#2. Use ADB to allow screen mirroring
+#3. Use ADB to force USB tethering, which allows KDE Connect to work
+#4. Use kde-connect-cli to pair to the USB connection
+
+scan_devices () {
+  ### This function gets all connected ADB devices or keeps trying to.
+  devices_list="$(adb devices)"
+  devices="$(echo "$devices_list" | sed '1d' | awk 'NF')"
+}
+
+exit_message () {
+  zenity --warning --width 500 --height 100 --title="Error in Execution" --text="$1"
+  exit
+}
+
+check_cancel () {
+  if [ $1 -ne 0 ]; then
+    exit
+  fi
+}
+
+android_tether () {
+  zenity --width 500 --height 100 --question --title="Hotspot Notice" --text="If you aren't connecting over WiFi, KDE Connect also works with USB or Bluetooth Tethering. Would you like me to open hotspot settings on your Android Device?"
+  if [[ "$?" == 0 ]]; then
+    zenity --info --width 500 --height 100 --title="Hotspot Notice" --text="Please unlock your device before continuing. Once you click OK, the hotspot settings page will open on your Android device."
+    adb -s "$1" shell input keyevent 3 && adb -s "$1" shell am start -n com.android.settings/.TetherSettings
+    zenity --info --width 500 --height 100 --title="Hotspot Notice" --text="Once you have finished making the necessary connections, click OK to continue."
+  fi
+}
+
+pair_devices () {
+  ### This function allows users to select ADB serials and KDE ids to "pair" and save.
+  ### It requires DEVICES be defined, so run scan_devices before this.
+  if [[ -n "$devices" ]]; then
+    pair_name="$(zenity --entry --title='Pairing (1/3)' --text='Enter a name for this pairing:' --entry-text 'MyDeviceName')"
+    check_cancel $?
+    readarray -t devices_array <<< "$devices"
+    for each in "${devices_array[@]}"; do
+      shown_devices+=("$each")
+    done
+    pair_select=$(zenity --list --title="Pairing (Step 2/3)" --text="Here are the devices ADB has found. Please select your device:" --column="Serial ID and Device" "${shown_devices[@]}")
+    check_cancel $?
+    if [ -n "$pair_select" ]; then
+      pair_a="$(echo $each | awk '{print $1}')" #this gets the ADB serial ID to create a pair...
+    else
+      exit_message "Invalid user input. Application is closing."
+    fi
+    android_tether "$pair_a"
+    kdecon_list="$(kdeconnect-cli -l)" #cmon kde, why do you keep spitting out the summary message
+    kdecon_list="$(echo "$kdecon_list" | tr -d '-')" #we accept the paired ones now here too, in case someone is recreating a pairing
+    if [[ -n "$kdecon_list" ]]; then
+      readarray -t kdecon_array <<< "$kdecon_list"
+      for each in "${kdecon_array[@]}"; do
+        kde_dev+=("$each")
+      done
+      kde_select=$(zenity --list --title="Pairing (Step 3/3)" --text="Here are the devices KDE Connect has found. Please select your device:" --column="KDE Connect Identifier" "${kde_dev[@]}")
+      check_cancel $?
+      if [ -n "$kde_select" ]; then
+        pair_b="$(echo "$kde_select" | cut -d':' -f 2 | awk '{print $1}')" #...and this gets the KDE Connect identifier ID to complete the pairing
+      else
+        exit_message "Invalid user input. Application is closing."
+      fi
+    fi
+    echo "$pair_name:$pair_a:$pair_b" >> /tmp/androidconnect #save the pairing now to tmp.
+    zenity --info --width 500 --height 100 --title="Pairing Complete" --text="Pairing has been completed and saved to /tmp/androidconnect."
+    welcome_screen
+  else
+    exit_message "No devices connected to ADB. Application is closing."
+  fi
+}
+
+load_devices () {
+  if [ ! -f "/tmp/androidconnect" ]; then
+    zenity --warning --width 500 --height 100 --title="Error in Execution" --text="No saved pairings found. Make one in the main menu screen."
+    exit
+  fi
+  stored_devices="$(cat /tmp/androidconnect)"
+  readarray -t loaded_array <<< "$stored_devices"
+    for each in "${loaded_array[@]}"; do
+      IFS=":" read -r load_name load_adb load_kde <<< "$each"
+      loaded_devices+=(" " "$load_name" "$load_adb" "$load_kde")
+    done
+}
+
+action_devices () {
+  ### First arg should be the pairing name, the second should be either m (mirror), c (connect), b (both)
+  actioned="$(echo "$stored_devices" | grep "$1" | head -n 1)" #get the first matched pairing
+  if [[ "$2" == "m" ]]; then
+    mirror_devices "$actioned"
+  elif [[ "$2" == "c" ]]; then
+    kde_connect_devices "$actioned"
+  fi
+}
+
+mirror_devices () {
+  ### This function runs a scrcpy on an ADB serial id.
+  ### You need to pass in the full pairing format (name:adb_id:kde_id)
+  scrcpy -s "$(echo $1 | awk -F":" '{print $2}')" -m1024 > /dev/null 2>&1 &
+}
+
+kde_connect_devices () {
+  ### This function runs connects to a KDE device.
+  ### You need to pass in the full pairing format (name:adb_id:kde_id)
+  android_tether "$(echo $1 | awk -F":" '{print $2}')"
+  kdeconnect-cli -d "$(echo $1 | awk -F":" '{print $3}')" --pair
+}
+
+welcome_screen () {
+  ### This function displays the main welcome screen function that allows users to choose options.
+  mirror_text="Mirror from Device"
+  connect_text="Connect to Device"
+  pair_text="Pair a Device"
+  delete_text="Delete a Pairing"
+  if [[ -z "$(cat /tmp/androidconnect)" ]]; then #check for an empty file
+    rm "/tmp/androidconnect"  #delete the empty file
+  fi
+  welcome_choice="$(zenity --list --checklist --height 400 --title="Welcome $USERNAME." --text="Choose an option:" --column=" " --column="Action" " " "$mirror_text" " " "$connect_text" " " "$pair_text" " " "$delete_text")"
+  check_cancel $?
+  if [ -n "$welcome_choice" ]; then
+    if [[ "$welcome_choice" == *"$pair_text"* ]]; then
+      #so how the pairing works is that we should get the ADB serial and the KDE Connect ID and link them together, stored in some file. This file then has to be accessed on the next welcome
+      zenity --info --width 500 --height 100 --title "Pairing a Device" --text "Please select your Android device on the next screen, followed by the appropriate KDE Connect pairing. This pairing will be stored on your computer for subsequent connections."
+      check_cancel $?
+      scan_devices #first get all the ADB ids.
+      pair_devices #then go through the pairing process
+    elif [[ "$welcome_choice" == *"$delete_text"* ]]; then
+      if [ ! -f "/tmp/androidconnect" ]; then
+        zenity --warning --width 500 --height 100 --title="Error in Execution" --text="No saved pairings found. Make one in the main menu screen."
+        exit
+      fi
+      stored_devices="$(cat /tmp/androidconnect)"
+      readarray -t del_array <<< "$stored_devices"
+      for each in "${del_array[@]}"; do
+        del_devices+=(" " "$each")
+      done
+      del_list="$(zenity --list --checklist --title="Delete Pairings" --text="Select pairings:" --column " " --column="Saved Pairings" "${del_devices[@]}")"
+      check_cancel $?
+      IFS='|' read -ra delete_now <<< "$del_list"
+      for each in "${delete_now[@]}"; do
+        sed -i "s/$each//g" /tmp/androidconnect
+      done
+      zenity --info --width 500 --height 100 --title="Pairings Deleted" --text="New list of pairings saved to /tmp/androidconnect."
+    else
+      load_devices #we need loaded_devices from this
+      zenity_select=$(zenity --list --checklist --title="Device Selection" --text="Choose which devices to mirror or connect to:" --column=" " --column="Name" --column="Serial ID" --column="KDE Connect ID" "${loaded_devices[@]}")
+      check_cancel $?
+      IFS='|' read -ra choiced <<< "$welcome_choice"
+      IFS='|' read -ra deviced <<< "$zenity_select"
+      for device_each in "${deviced[@]}"; do
+        for choice in "${choiced[@]}"; do
+          if [[ "$choice" == "$mirror_text" ]]; then
+            action_devices "$device_each" "m"
+          elif [[ "$choice" == "$connect_text" ]]; then
+            action_devices "$device_each" "c"
+          fi
+        done
+      done
+    fi
+  fi
+}
+
+welcome_screen
