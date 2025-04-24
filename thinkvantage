@@ -1,0 +1,203 @@
+#!/bin/bash
+
+#-g option. displays a gui via zenity
+gui_zenity () {
+  option1="System Info"
+  option2="Power Settings"
+
+  #First menu, choose between various options
+  thinkvantage_mode=$(zenity --list \
+    --radiolist \
+    --title="Select an Option:" \
+    --column="" --column="Choices" \
+    FALSE "$option1" \
+    FALSE "$option2" \
+    --height=300 --width=400)
+
+  #case of power settings...
+  if [ "$thinkvantage_mode" == "$option2" ]; then
+    power_choices=$(zenity --list --checklist \
+      --title="Dynamic Profiler Control" \
+      --text="Select one or more commands to run. Executed from top to bottom order:" \
+      --column="Select" --column="Command" \
+      FALSE "dynamic-profiler-ctrl profile performance" \
+      FALSE "dynamic-profiler-ctrl profile balanced" \
+      FALSE "dynamic-profiler-ctrl profile power" \
+      FALSE "dynamic-profiler-ctrl turbo on" \
+      FALSE "dynamic-profiler-ctrl turbo off" \
+      FALSE "dynamic-profiler-ctrl reset" \
+      --height=450 --width=450)
+    #and actually exectue it
+    if [ -n "$power_choices" ]; then
+      IFS="|" read -ra power_commands <<< "$power_choices"
+      for each in "${power_commands[@]}"; do
+        eval "$each"
+      done
+    fi
+  fi
+
+  #case of system info... (basically what argos was then)
+  if [ "$thinkvantage_mode" == "$option1" ]; then
+    # no need to redefine this each time
+    bar_chart() {
+      percentage=$1
+      filled_length=$(( percentage / 4 ))
+      bar="["
+      for ((i=0; i<filled_length; i++)); do
+          bar+="#"
+      done
+      for ((i=filled_length; i<25; i++)); do
+          bar+=" "
+      done
+      bar+="]"
+      echo "$bar"
+    }
+
+    # main loop, executes every 2 seconds
+    ( while true; do
+    #Get CPU info
+    top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
+    cpu="$(echo "$top_get" | tail -n 1 | awk '{ print $2 '+' $4; }' | bc)"
+    int_cpu=$(printf "%.*f\n" 0 $cpu)
+    cpu_name=$(cat /proc/cpuinfo | grep "model name" | tail -n 1 | awk -F': ' '{print $2}')
+    freq_info=$(lscpu | grep MHz)
+    max_freq=$(echo "$(echo "$freq_info" | grep "max" | awk '{print $4}')" | awk '{printf "%.0f", $1}')
+    percent_freq=$(echo "$(echo "$freq_info" | grep "scaling" | awk '{print $4}')" | awk -F'%' '{print $1}')
+    curr_freq=$(echo "$(( $max_freq * $percent_freq / 100 ))" | awk '{printf "%.2f", $1 / 1000}')
+
+    #Check turbo boost status
+    if [ $(cat /sys/devices/system/cpu/intel_pstate/no_turbo) == "0" ]; then
+      boost="active"
+    else
+      boost="inactive"
+    fi
+
+    #Get RAM usage info
+    ram_info=$(free -m | grep Mem)
+    total_ram=$(echo $ram_info | awk '{print $2}')
+    used_ram=$(echo $ram_info | awk '{print $3}')
+    percent_ram=$(( $used_ram * 100 / $total_ram ))
+
+    #Get Temperature from thinkpad hwmon
+    for each in $(ls /sys/class/hwmon); do
+      if [ "$(cat /sys/class/hwmon/$each/name)" == "thinkpad" ]; then
+        cpu_temp=$(($(cat /sys/class/hwmon/$each/temp1_input) / 1000))
+        gpu_check=$(cat /sys/class/hwmon/$each/temp2_input 2>&1)
+        if [[ "$gpu_check" == *"No such device or address"* ]]; then
+          gpu_temp="--"
+        else
+          gpu_temp=$(( $gpu_check / 1000 ))
+        fi
+        break
+      fi
+    done
+
+    #Get IBM Fan Speed
+    fan_level=$(echo $(cat /proc/acpi/ibm/fan | grep level:) | awk '{print $2}')
+    if [ $fan_level == "auto" ]; then
+      fan_bar="[      - fans auto -      ]"
+    elif [ $fan_level == "disengaged" ]; then
+      fan_bar="[   - fans disengaged -   ]"
+    else
+      fan_bar="$(bar_chart $(( $fan_level * 100 / 7 )))"
+    fi
+    fan_speed=$(echo $(cat /proc/acpi/ibm/fan | grep speed:) | awk '{print $2}')
+    if [ $fan_speed == 0 ]; then
+      fan_speed="OFF"
+    else
+      fan_speed="$fan_speed RPM"
+    fi
+
+    #Get power info
+    upower=$(upower -i /org/freedesktop/UPower/devices/battery_BAT0)
+    charge_state=$(echo "$(echo "$upower" | grep state | awk '{print $2}')")
+
+    #Get battery stats
+    curr_charge="$(echo "$upower" | grep "energy:" | awk '{print $2}')"
+    curr_cap="$(echo "$upower" | grep "energy-full:" | awk '{print $2}')"
+    fact_cap="$(echo "$upower" | grep "energy-full-design:" | awk '{print $2}')"
+    batt_health="$(echo "$upower" | grep "capacity" | awk '{print $2}')"
+    time_to="$(echo "$upower" | grep "time to" | cut -c 26-45)"
+    cycles="$(echo "$upower" | grep "charge-cycles" | awk '{print $2}')"
+    batt_display_text="⏻ Battery: $curr_charge Wh Left / $curr_cap Wh Total"
+    if [[ ! -z $time_to ]]; then
+      batt_display_text+="\n- $time_to remaining ($charge_state)"
+    fi
+    if [ $charge_state == "discharging" ]; then
+      watt=$(echo "scale=2; $(cat /sys/class/power_supply/BAT0/power_now) / 1000000" | bc)
+      batt_display_text+="[-$watt W]"
+    fi
+
+    #Get load stats
+    curr_load="$(echo "$top_get" | head -n 1 | awk '{print $3;}' | tr ',' ' ')"
+    load_percent="$(echo "$curr_load * 100 / $(grep processor /proc/cpuinfo | wc -l)" | bc)"
+
+    echo "# <tt>🖳 CPU: $cpu_name\n- Boost $boost, $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor) profile ($curr_freq GHz)\n- CPU Usage: $(bar_chart $int_cpu) - $cpu%\n\n🎟 Memory: $(echo "$(echo "scale=2; $used_ram / 1024" | bc)") GB Used / $(echo "$(echo "scale=2; $total_ram / 1024" | bc)") GB Total\n- RAM Usage: $(bar_chart $percent_ram) - $percent_ram%\n\n🌡 CPU Temp: $cpu_temp °C / GPU Temp: $gpu_temp °C\n- Fan Speed: $fan_bar - $fan_speed\n\n$batt_display_text\n- Health: $batt_health of $fact_cap Wh ($cycles cycles)\n\n🖧 Other Information:\n- Host IPv4 Address: $(hostname -i | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)\n- Sys. Load: $(bar_chart $load_percent) - $curr_load\n</tt>"
+    echo "0"
+    sleep 2
+    done
+    ) | zenity --progress \
+      --title="System Information" \
+      --text="Starting..." \
+      --percentage=0 \
+      --height=450 \
+      --width=450 \
+      --auto-close
+  fi
+}
+
+#-d option. simply prints temp/watt data in a single line
+simple_display () {
+  # How many units after the decimal point (for numbers) you want to display in the panel
+  length=2
+  # Power profile toggles
+  performance="dynamic-profiler-ctrl profile performance turbo on"
+  balanced="dynamic-profiler-ctrl profile balanced turbo off"
+  power="dynamic-profiler-ctrl profile power turbo off"
+  turon="dynamic-profiler-ctrl turbo on"
+  turoff="dynamic-profiler-ctrl turbo off"
+
+  #Get power info
+  upower=$(upower -i /org/freedesktop/UPower/devices/battery_BAT0)
+  charge_state=$(echo "$(echo "$upower" | grep state | awk '{print $2}')")
+
+  #Get Temperature from thinkpad hwmon
+  for each in $(ls /sys/class/hwmon); do
+    if [ "$(cat /sys/class/hwmon/$each/name)" == "thinkpad" ]; then
+      cpu_temp=$(($(cat /sys/class/hwmon/$each/temp1_input) / 1000))
+      break
+    fi
+  done
+
+  #Determine what to display in the panel
+  if [ $charge_state != "discharging" ]; then
+    echo -e "$cpu_temp °C" #this displays to the panel if not discharging
+  else
+    watt=$(echo "scale=$length; $(cat /sys/class/power_supply/BAT0/power_now) / 1000000" | bc)
+    int=$(printf "%.*f\n" 0 $watt)
+    echo -e "$watt W / $cpu_temp °C" #this displays to the panel when discharging
+  fi
+}
+
+##########
+
+#main trigger logic. defaults to -d if no flags
+if [ $# -eq 0 ]; then
+  simple_display
+fi
+
+# g for gui, d for display
+while getopts "dg" opt; do
+  case ${opt} in
+    d )
+      simple_display
+      ;;
+    g )
+      gui_zenity
+      ;;
+    * )
+      echo "Usage: Use -g to display the zenity gui, or -d to display a simplifed text dialogue meant for command output display"
+      exit 1
+      ;;
+  esac
+done
