@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#Do this first, so we can deal with the powerbridge devices
+BATT="BAT0"
+if [ ! -z "$(upower -d | grep BAT1)" ]; then
+  if [ "(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep state | awk '{print $2}')" != "charging" ]; then
+    BATT="BAT1"
+  fi
+fi
+
+
 #-g option. displays a gui via zenity
 gui_zenity () {
   option1="System Info"
@@ -109,7 +118,7 @@ gui_zenity () {
     fi
 
     #Get power info
-    upower=$(upower -i /org/freedesktop/UPower/devices/battery_BAT0)
+    upower=$(upower -i /org/freedesktop/UPower/devices/battery_$BATT)
     charge_state=$(echo "$(echo "$upower" | grep state | awk '{print $2}')")
 
     #Get battery stats
@@ -124,7 +133,7 @@ gui_zenity () {
       batt_display_text+="\n- $time_to remaining ($charge_state)"
     fi
     if [ $charge_state == "discharging" ]; then
-      watt=$(echo "scale=2; $(cat /sys/class/power_supply/BAT0/power_now) / 1000000" | bc)
+      watt=$(echo "scale=2; $(cat /sys/class/power_supply/$BATT/power_now) / 1000000" | bc)
       batt_display_text+="[-$watt W]"
     fi
 
@@ -158,7 +167,7 @@ simple_display () {
   turoff="dynamic-profiler-ctrl turbo off"
 
   #Get power info
-  upower=$(upower -i /org/freedesktop/UPower/devices/battery_BAT0)
+  upower=$(upower -i /org/freedesktop/UPower/devices/battery_$BATT)
   charge_state=$(echo "$(echo "$upower" | grep state | awk '{print $2}')")
 
   #Get Temperature from thinkpad hwmon
@@ -173,7 +182,7 @@ simple_display () {
   if [ $charge_state != "discharging" ]; then
     echo -e "$cpu_temp °C" #this displays to the panel if not discharging
   else
-    watt=$(echo "scale=$length; $(cat /sys/class/power_supply/BAT0/power_now) / 1000000" | bc)
+    watt=$(echo "scale=$length; $(cat /sys/class/power_supply/$BATT/power_now) / 1000000" | bc)
     int=$(printf "%.*f\n" 0 $watt)
     echo -e "$watt W / $cpu_temp °C" #this displays to the panel when discharging
   fi
