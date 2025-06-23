@@ -105,7 +105,7 @@ while [[ "$#" -gt 0 ]]; do
           balanced
           echo -e "Balanced Mode activated."
         elif [[ "$1" == "power" || "$1" == "powersave" ]]; then
-          powersave
+          power
           echo -e "Power Saving Mode activated."
         else
           echo -e "[ERROR] Invalid profile name passed in to profile option. Accepted values are:\n- performance\n- balanced\n- power"
