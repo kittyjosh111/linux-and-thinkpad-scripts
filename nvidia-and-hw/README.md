@@ -20,7 +20,7 @@ Use those commands to monitor the GPU power status. If you can see D3cold on the
 
 - https://discussion.fedoraproject.org/t/kde-and-nvidia-drivers-causing-low-fps-lag-stuttering/125950 (Fedora discussion about GSP on the closed vs open drivers)
 
-- https://discussion.fedoraproject.org/t/kde-and-nvidia-drivers-causing-low-fps-lag-stuttering/125950 (Github repo with details on enabling GSP)
+- https://github.com/oddmario/NVIDIA-Fedora-Driver-Guide?tab=readme-ov-file#the-experience-on-wayland-is-not-the-smoothest-fix-wayland-issues (Github repo with details on enabling GSP)
 
 - https://negativo17.org/nvidia-driver/#Proprietary_and_open_source_kernel_modules (Negativo17 notes about closed vs open drivers)
 
@@ -42,7 +42,7 @@ If these values already exist, just add the values in the parantheses to whateve
 
 5. Create a file ```/etc/modprobe.d/nvidia-pm.conf``` with content ```options nvidia "NVreg_DynamicPowerManagement=0x02"``` .
 
-6. Create a file ```/etc/modprobe.d/nvidia.conf``` with content ```"NVreg_EnableGpuFirmware=0"``` .
+6. Create a file ```/etc/modprobe.d/nvidia.conf``` with content ```options nvidia "NVreg_EnableGpuFirmware=0"``` .
 
 7. Update GRUB to be sure.
 
@@ -62,7 +62,7 @@ If these values already exist, just add the values in the parantheses to whateve
 
 4. Create a file ```/etc/modprobe.d/nvidia-pm.conf``` with content ```options nvidia "NVreg_DynamicPowerManagement=0x02"``` .
 
-5. Create a file ```/etc/modprobe.d/nvidia.conf``` with content ```"NVreg_EnableGpuFirmware=0"``` .
+5. Create a file ```/etc/modprobe.d/nvidia.conf``` with content ```options nvidia "NVreg_EnableGpuFirmware=0"``` .
 
 6. Update GRUB to be sure.
 
