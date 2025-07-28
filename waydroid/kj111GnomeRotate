@@ -1,0 +1,77 @@
+#!/bin/bash
+
+## monitor-sensor options:
+# set the following strings to some identifiable string that indicates your device's orientation
+device_landscape_normal="normal"
+device_left_portrait="left-up"
+device_right_portrait="right-up"
+device_landscape_flipped="bottom-up"
+
+## waydroid shell rotation:
+# test these by running 'waydroid shell wm user-rotation lock $NUMBER'
+# depending on waydroid version, the above command might use set-user-rotation instead
+normal="0"
+left_up="3"
+right_up="1"
+flipped="2"
+
+## set to turn on debug messages
+debug_mode=1
+
+######################################################################
+## DO NOT MODIFY BELOW THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING ##
+######################################################################
+
+## define a function that returns True when we can grep, False otherwise
+grep_check () {
+  if [ -z "$(echo "$1" | grep "$2")" ]; then
+    return 1 #pretend this is false
+  else
+    return 0 #and thats true
+  fi
+}
+
+## and a function that maps the DEVICE rotation to WAYDROID rotation
+rot_map () {
+  if grep_check "$1" "$device_landscape_normal"; then
+    if [[ $debug_mode == 1 ]]; then
+      echo "- Device in LANDSCAPE NORMAL orientation."
+    fi
+    waydroid shell wm user-rotation lock $normal
+  elif grep_check "$1" "$device_left_portrait"; then
+    if [[ $debug_mode == 1 ]]; then
+      echo "- Device in LEFT PORTRAIT orientation."
+    fi
+    waydroid shell wm user-rotation lock $left_up
+  elif grep_check "$1" "$device_landscape_flipped"; then
+    if [[ $debug_mode == 1 ]]; then
+      echo "- Device in LANDSCAPE FLIPPED orientation."
+    fi
+    waydroid shell wm user-rotation lock $flipped
+  elif grep_check "$1" "$device_right_portrait"; then
+   if [[ $debug_mode == 1 ]]; then
+     echo "- Device in RIGHT PORTRAIT orientation."
+   fi
+   waydroid shell wm user-rotation lock $right_up
+  else #we should not get here!
+    if [[ $debug_mode == 1 ]]; then
+      echo "[WARNING] Edge case reached in rot_map()"
+    fi
+  fi
+}
+
+## start running rotation logging
+rm /tmp/kj111GnomeWaydroidRotate
+echo "Script Starting..."
+monitor-sensor --accel > /tmp/kj111GnomeWaydroidRotate 2>&1 &
+sleep 2 #let file populate
+
+## and now, we do the initial rotation
+curr_rot="$(tail -n 1 /tmp/kj111GnomeWaydroidRotate)"
+rot_map "$curr_rot"
+
+## Polling is expensive. Let us use inotify.
+echo "Main loop started..."
+inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111GnomeWaydroidRotate | while read changed; do
+  rot_map "$(tail -n 1 /tmp/kj111GnomeWaydroidRotate)"
+done
