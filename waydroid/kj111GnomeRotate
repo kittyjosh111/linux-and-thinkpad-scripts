@@ -67,11 +67,11 @@ monitor-sensor --accel > /tmp/kj111GnomeWaydroidRotate 2>&1 &
 sleep 2 #let file populate
 
 ## and now, we do the initial rotation
-curr_rot="$(tail -n 1 /tmp/kj111GnomeWaydroidRotate)"
+curr_rot="$(tail -n 2 /tmp/kj111GnomeWaydroidRotate)"
 rot_map "$curr_rot"
 
 ## Polling is expensive. Let us use inotify.
 echo "Main loop started..."
 inotifywait --monitor --format "%e %w%f" --event modify,create /tmp/kj111GnomeWaydroidRotate | while read changed; do
-  rot_map "$(tail -n 1 /tmp/kj111GnomeWaydroidRotate)"
+  rot_map "$(tail -n 2 /tmp/kj111GnomeWaydroidRotate)"
 done
