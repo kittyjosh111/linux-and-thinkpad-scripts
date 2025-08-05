@@ -51,7 +51,7 @@ performance_set () {
   check_tmp "performance"
   check_ret=$?
   if [[ $check_ret != 1 ]]; then
-    $PERFORMANCE
+    eval "$PERFORMANCE"
     echo "Performance Mode set!"
     echo "performance" | tee /tmp/dynamic-profiler > /dev/null
   fi
@@ -61,7 +61,7 @@ balanced_set () {
   check_tmp "balanced"
   check_ret=$?
   if [[ $check_ret != 1 ]]; then
-    $BALANCED
+    eval "$BALANCED"
     echo "Balanced Mode set!"
     echo "balanced" | tee /tmp/dynamic-profiler > /dev/null
   fi
@@ -71,7 +71,7 @@ power_set () {
   check_tmp "power"
   check_ret=$?
   if [[ $check_ret != 1 ]]; then
-    $POWER
+    eval "$POWER"
     echo "Power Mode set!"
     echo "power" | tee /tmp/dynamic-profiler > /dev/null
   fi
