@@ -98,6 +98,7 @@ profile_set () {
 ## Main loop
 POWER_LEVEL=1 #0 for powersave, +1 to balanced, +1 to perf
 IS_LOCKED=0 #0 for no, 1 for yes
+TURBO_LOCKED=0
 PMTOGGLE=5 #sorry, habit from zscripting
 while true
 do
@@ -134,17 +135,6 @@ do
       echo "Lock file found. Waiting for manual instruction."
       echo "locked" | tee /tmp/dynamic-profiler > /dev/null
       IS_LOCKED=1
-    fi
-    if [ -f /tmp/dynamic-profiler-turbo-on ]; then
-      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-      echo "Turbo Mode enabled manually"
-      rm /tmp/dynamic-profiler-turbo-on > /dev/null
-      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
-    elif [ -f /tmp/dynamic-profiler-turbo-off ]; then
-      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-      echo "Turbo Mode disabled manually"
-      rm /tmp/dynamic-profiler-turbo-off > /dev/null
-      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
     fi
     if [ -f /tmp/dynamic-profiler-manual ]; then
       man_sett=$(cat /tmp/dynamic-profiler-manual)
@@ -195,7 +185,24 @@ do
       true #something unexpected, just stay in place
     fi
     profile_set $POWER_LEVEL
-    turbo_set $int_cpu
+    if [ -f /tmp/dynamic-profiler-turbo-on ]; then
+      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+      echo "Turbo Mode enabled manually."
+      rm /tmp/dynamic-profiler-turbo-on > /dev/null
+      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
+    elif [ -f /tmp/dynamic-profiler-turbo-off ]; then
+      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+      echo "Turbo Mode disabled manually."
+      rm /tmp/dynamic-profiler-turbo-off > /dev/null
+      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
+    fi
+    if [ ! -f /tmp/dynamic-profiler-turbo-lock ]; then
+      turbo_set $int_cpu
+    else
+      if [[ $DEBUG_LOG == 1 ]]; then
+        echo "Turbo Mode locked."
+      fi
+    fi
     debug_log
   fi
 done

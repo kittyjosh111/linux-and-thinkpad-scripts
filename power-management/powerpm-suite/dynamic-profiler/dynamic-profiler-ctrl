@@ -31,13 +31,13 @@ reset () {
 }
 
 turbo-on () {
-  touch /tmp/dynamic-profiler-lock 2> /dev/null
   touch /tmp/dynamic-profiler-turbo-on 2> /dev/null
+  touch /tmp/dynamic-profiler-turbo-lock 2> /dev/null
 }
 
 turbo-off () {
-  touch /tmp/dynamic-profiler-lock 2> /dev/null
   touch /tmp/dynamic-profiler-turbo-off 2> /dev/null
+  touch /tmp/dynamic-profiler-turbo-lock 2> /dev/null
 }
 
 print-all () {
@@ -51,8 +51,15 @@ print-all () {
     BALANCED="$BAT_BALANCED"
     POWER="$BAT_POWER"
   fi
+  locks=""
   if [ -f /tmp/dynamic-profiler-lock ]; then
-    echo -e "[NOTICE] dynamic-profiler is currently running in manual mode.\n"
+    locks+="[NOTICE] dynamic-profiler is currently running in manual mode.\n"
+  fi
+  if [ -f /tmp/dynamic-profiler-turbo-lock ]; then
+    locks+="[NOTICE] Turbo Boost is currently locked.\n"
+  fi
+  if [ ! -z "$locks" ]; then
+    echo -e "$locks"
   fi
   curr_power="$(cat /tmp/dynamic-profiler)"
   curr_turbo="$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)"
