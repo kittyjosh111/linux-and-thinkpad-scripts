@@ -20,13 +20,19 @@ Based on your CPU usage and system load (measured every 4 seconds), the main exe
 
 to temporarily disable and manually control dynamic-profiler, follow these steps:
 
+0) Determine if you want to lock only the profile-switching or the turbo-boost toggling. If you want to lock only profile-switching, follow step 1-2. If you want to lock only the turbo boost status, follow step 3. You can combine the steps if you want to lock both at the same time.
+
 1) Lock dynamic-profiler. Do this by creating a file ```/tmp/dynamic-profiler-lock```. The filename must match that exactly. You can use command ```touch /tmp/dynamic-profiler-lock```.
 
-2) To control turbo boost manually, create either ```/tmp/dynamic-profiler-turbo-on``` to turn it on, or ```/tmp/dynamic-profiler-turbo-off```. You can use the touch command again.
+2) To control power governor by calling whichever commands you've set in the config file, create a file ```/tmp/dynamic-profier-manual``` and write the word "performance", "balanced", or "power" in it. You can do this for example with ```echo "performance" | tee /tmp/dynamic-profiler/manual```
 
-3) To control power governor by calling whichever commands you've set in the config file, create a file ```/tmp/dynamic-profier-manual``` and write the word "performance", "balanced", or "power" in it. You can do this for example with ```echo "performance" | tee /tmp/dynamic-profiler/manual```
+3) To control turbo boost manually, first create ```/tmp/dynamic-profiler-turbo-lock```. Then create either ```/tmp/dynamic-profiler-turbo-on``` to turn it on, or ```/tmp/dynamic-profiler-turbo-off```. You can use the touch command again.
 
-4) To disable manual control and return to automatic management, remove the lock file. So, ```rm /tmp/dynamic-profiler-lock```
+4) To disable manual control and return to automatic management, remove the lock files you created. So, either ```rm /tmp/dynamic-profiler-lock``` or ```rm /tmp/dynamic-profiler-turbo-lock``` or both.
+
+## manual control with dynamic-profiler-ctrl
+
+its just a script that can do the above steps, as well as give a update of which profile dynamic-profiler is on. The text and use of this tool is inspired by both ppd and tuned-adm. Use the ```-h``` flag for help.
 
 ## more details
 
