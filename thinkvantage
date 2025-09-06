@@ -125,7 +125,7 @@ gui_zenity () {
     curr_charge="$(echo "$upower" | grep "energy:" | awk '{print $2}')"
     curr_cap="$(echo "$upower" | grep "energy-full:" | awk '{print $2}')"
     fact_cap="$(echo "$upower" | grep "energy-full-design:" | awk '{print $2}')"
-    batt_health="$(echo "$upower" | grep "capacity" | awk '{print $2}')"
+    batt_health="$(echo "$upower" | grep "capacity:" | awk '{print $2}')"
     time_to="$(echo "$upower" | grep "time to" | cut -c 26-45)"
     cycles="$(echo "$upower" | grep "charge-cycles" | awk '{print $2}')"
     batt_display_text="⏻ Battery: $curr_charge Wh Left / $curr_cap Wh Total"
