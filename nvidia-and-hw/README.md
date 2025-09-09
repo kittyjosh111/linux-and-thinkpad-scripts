@@ -22,7 +22,9 @@ Use those commands to monitor the GPU power status. If you can see D3cold on the
 
 - https://github.com/oddmario/NVIDIA-Fedora-Driver-Guide?tab=readme-ov-file#the-experience-on-wayland-is-not-the-smoothest-fix-wayland-issues (Github repo with details on enabling GSP)
 
-- https://negativo17.org/nvidia-driver/#Proprietary_and_open_source_kernel_modules (Negativo17 notes about closed vs open drivers)
+- https://rpmfusion.org/Howto/NVIDIA (Fedora's howto for installing nvidia drivers via RPMFusion)
+
+- https://www.reddit.com/r/Fedora/comments/1mbmhqk/comment/n7mm8t0/ (The only advice I found that actually told you how to force the proprietary drivers from RPMFusion on Fedora, thanks so much u/EnterTheDarkSide!)
 
 ## Enabling RTD3 (For Arch/EndeavourOS on GNOME Wayland)
 
@@ -54,29 +56,33 @@ If these values already exist, just add the values in the parantheses to whateve
 
 ## Enabling RTD3 (For Fedora, with GNOME Wayland)
 
-1. Install the negativo17 drivers (https://negativo17.org/nvidia-driver/).
+1. Install the normal nvidia drivers (```akmod-nvidia, xorg-x11-drv-nvidia-cuda```) from RPMFusion (note, I did not need the rpmfusion-nonfree-nvidia-driver repo to be enabled).
 
-2. Install ```akmod-nvidia``` and related package. When installing the nvidia drivers from Negativo17, ensure that they are actually coming from the ```fedora-nvidia``` repo, NOT Fedora's own ```nonfree-nvidia``` and ```updates``` repos. If needed, disable those two Fedora repos.
+2. Following the [Arch Wiki](https://wiki.archlinux.org/title/PRIME#NVIDIA) instructions, create the **udev** rule listed. Add all the rules listed (6 total).
 
-3. Following the [Arch Wiki](https://wiki.archlinux.org/title/PRIME#NVIDIA) instructions, create the **udev** rule listed. Add all the rules listed (6 total).
+3. Create a file ```/etc/modprobe.d/nvidia-pm.conf``` with content ```options nvidia "NVreg_DynamicPowerManagement=0x02"``` .
 
-4. Create a file ```/etc/modprobe.d/nvidia-pm.conf``` with content ```options nvidia "NVreg_DynamicPowerManagement=0x02"``` .
+4. Create a file ```/etc/modprobe.d/nvidia.conf``` with content ```options nvidia "NVreg_EnableGpuFirmware=0"``` .
 
-5. Create a file ```/etc/modprobe.d/nvidia.conf``` with content ```options nvidia "NVreg_EnableGpuFirmware=0"``` .
+5. Update GRUB to be sure.
 
-6. Update GRUB to be sure.
+6. Reboot.
 
-7. Reboot.
+7. Upon reboot, run ```modinfo -l nvidia``` to check which version of the nvidia driver you have. If it is ```NVIDIA```, you are done! If it is ```Dual MIT/GPL```, you need to complete the following steps.
 
-8. Navigate to the [Proprietary and open source kernel modules](https://negativo17.org/nvidia-driver/#Proprietary_and_open_source_kernel_modules) section on Negativo17's website. Scroll down to the "akmods" section. Follow the instructions there. You'll most likely have installed the ```Dual MIT/GPL``` (open) version of the driver, so run the commands to switch to the closed drivers.
+8. Run ```sudo sh -c 'echo "%_without_kmod_nvidia_detect 1" > /etc/rpm/macros.nvidia-kmod'```. This is a macro telling akmods to use the proprietary driver.
 
-9. Before rebooting, run ```sudo dracut --regenerate-all --force``` .
+9. Run ```sudo akmods --rebuild``` to force rebuild with akmod.
 
-10. If you want, install ```prime-run``` or ```switcherooctl``` to manually tell apps which GPU to use.
+10. Run ```sudo dracut --regenerate-all --force``` to regenerate the initramfs.
 
-11. Reboot, use commands from the top to monitor your GPU. Look for D3cold when the GPU is not in use to ensure it worked.
+11. Run ```modinfo -l nvidia``` to check the version of the nvidia driver now. It should say ```NVIDIA```. 
 
-12. If GNOME apps (calculator, clock) or electron apps (chromium, VSCode) activate the dGPU, then add ```GSK_RENDERER=ngl``` to ```/etc/environment```. Change the renderer for flatpaks as well using Flatseal. Once done, reboot again. (https://bbs.archlinux.org/viewtopic.php?id=284426)
+12. If you want, install ```prime-run``` or ```switcherooctl``` to manually tell apps which GPU to use.
+
+13. Reboot, use commands from the top to monitor your GPU. Look for D3cold when the GPU is not in use to ensure it worked.
+
+14. If GNOME apps (calculator, clock) or electron apps (chromium, VSCode) activate the dGPU, then add ```GSK_RENDERER=ngl``` to ```/etc/environment```. Change the renderer for flatpaks as well using Flatseal. Once done, reboot again. (https://bbs.archlinux.org/viewtopic.php?id=284426)
 
 ## Chrome HW (on iGPU)
 
