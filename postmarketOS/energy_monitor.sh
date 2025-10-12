@@ -4,8 +4,8 @@ temperature="$(cat /sys/class/hwmon/hwmon0/temp1_input)"
 temp_display="$(echo "scale=0; $temperature / 1000" | bc) °C"
 
 if [[ "$energy_rate" == *"-"* ]]; then
-  display_a="$(echo "scale=2; $energy_rate / 100000" | bc)"
-  display="$display_a / $temp_display"
+  display_a="$(echo "scale=2; $energy_rate / -100000" | bc)"
+  display="$display_a W / $temp_display"
 else
   display=$temp_display
 fi
