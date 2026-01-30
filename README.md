@@ -6,15 +6,14 @@ The folder name indicates what type of scripts or guides is contained within. If
 # devices and distros
 
 The scripts were used on the following distros:
-1) Fedora Linux 36-40
+1) Fedora Linux 36-43
+2) PostmarketOS Edge (for the chromebook specific scripts)
 
-It should work on other distros, but specifics of installation may change.
+Most scripts should work on other distros, but specifics of installation may change.
 
-scripts were developed, tested, and sometimes remain on the following devices:
+scripts were developed, tested, and mostly deployed on the following devices:
 1) ThinkPad P16s (Intel) Gen 1 (2022)
-2) ThinkPad X1 Yoga (OLED) Gen 1 (2016)
-3) ThinkPad E540 (Intel) i5 4200M (2014)
-4) ThinkPad Yoga 370 / ThinkPad X380 Yoga (2017, 2018)
+2) ThinkPad X1 Yoga Gen 3 (2018)
 
 Additionally, scripts in ```chromebook-duet``` were tested on:
 1) Lenovo IdeaPad Duet Chromebook 10.1 (google-krane)
