@@ -1,0 +1,8 @@
+[Unit]
+Description=restart dynamic-profiler service on resuming from suspend
+After=suspend.target             
+[Service]
+Type=simple
+ExecStart=/usr/bin/systemctl --no-block restart dynamic-profiler.service
+[Install]
+WantedBy=suspend.target

@@ -17,7 +17,11 @@ else
 fi
 
 # Script to automatically change power management settings based on system usage.
-rm /tmp/dynamic-profiler
+# Pre-run checklist
+rm /tmp/dynamic-profiler #reset
+cpupower frequency-set -u 9999999
+eval "$PERFORMANCE" #force maximum performance, fixes problem with sluggish post-suspension
+echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #force maximum...
 
 #precheck tmp file
 if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file

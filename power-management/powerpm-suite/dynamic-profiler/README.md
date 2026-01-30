@@ -14,7 +14,7 @@ Based on your CPU usage and system load (measured every 4 seconds), the main exe
 
 4. Edit the conf file. There are descriptions of what each variable means inside the conf file. All values are required to be filled.
 
-5. Copy the systemd file to /etc/systemd/system/ if you want to use systemd. Enable it and start it.
+5. Copy the systemd files to /etc/systemd/system/ if you want to use systemd. Enable them and start them.
 
 ## manual control
 
