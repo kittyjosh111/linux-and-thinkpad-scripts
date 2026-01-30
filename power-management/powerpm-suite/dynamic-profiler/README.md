@@ -84,6 +84,10 @@ Finally, we look again to CPU usage to determine whether to apply turbo boost. I
 
 Again, the conf file has one ```TURBO_CPU_THRESHOLD``` for AC mode and one for battery mode.
 
+### sluggishness on resume
+
+I've noticed on Fedora that my laptops feel sluggish after waking from suspend, and further testing showed that the max frequency of the CPUs somehow got lowered during suspension. It seems to only happen after longer suspends, but a fix is to manually set the frequency to some high number like 9999 to force the cpus back to normal. While I think the GPU faces the same problem, I don't know how to manually perform such a trick, so dynamic-profiler will just force the performance profile / turbo boost on when the script begins, before applying dynamic tuning. Hopefully this helps alleviate slugishness after resumes with the included dynamic-profiler-restart.service systemd service.
+
 ### debugging
 
 If you want to debug, you can set ```DEBUG_LOG``` to 1. This prints a line with load delta, cpu usage, and turbo status each time the script goes to apply a profile. (LOAD DELTA: -4, CPU: 3, NO_TURBO: 1). Load deltas are reported in hundredths (15 = 0.15 difference).

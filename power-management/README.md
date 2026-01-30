@@ -8,17 +8,21 @@ What I really need is a way to automate switching between performance, balanced,
 
 To that end, system76pm was my first attempt to do so. I had used system76-power previously and just made a check on AC status to toggle either performance or power modes.
 
+As time went on, I modified that basic script to fit my needs, leading to the current implementation found in **powerpm-suite**.
+
 The legacy folder contain legacy scripts which are no longer used.
 
 **The current generation of scripts is in ```powerpm-suite```.** The components are below:
 
 1) ```pmtoggle```: pmtoggle stands for "power management toggle", and is essentially a udev rules that writes a file to /tmp/, then populates it with 0 for disconnected from AC, and 1 for connected. **You should install this first, else other components such as powerpm will not work**. To install, go into the folder named pmtoggle and follow the instructions.
 
-2) ```powerpm```: powerpm is a script that waits for ```pmtoggle``` to make changes to the file in /tmp/ and then decides which power profile to apply in response to AC presence. The user can set which commands to run on AC connection and disconnection, which means you can use any power management you want such as power-profiles-daemon, tuned, system76-power, etc. Additionally, it uses notify-send to send notifications on AC status changes. There is the additional option to enable turbo boost toggling (boost on with AC connected, boost off with AC disconnected), and enable/disable the co-activation of the ```turbo-load``` script. To install, go into the folder named powerpm. **Make sure to read the instructions**.
+2) ```dynamic-profiler``` /  ```dynamic-profiler-ctrl```: these are scripts that read your system load and cpu usage to automatically determine whether to apply a power, performance, or balanced governor + turbo boost to your system. As an example of how dynamic-profiler works, having heavy load AND heavy CPU usage will enable a performance preset and turn on turbo boost. If you only have heavy load but not heavy CPU usage, then performance preset is applied, but NOT turbo boost. Additionally, you can temporarily block this script from applying changes by creating a file named ```dynamic-profiler-lock``` in /tmp. Once this file is removed, the script will resume applying power management changes.
 
-3) ```dynamic-profiler``` /  ```dynamic-profiler-batt```: these are scripts that read your system load and cpu usage to determine whether to apply a power, performance, or balanced governor + boost preset to your system. For example, having heavy load AND heavy CPU usage will enable a performance preset and turn on turbo boost. If you only have heavy load but not heavy CPU usage, then performance preset is applied, but NOT turbo boost. The *-batt version is meant to run on battery power (by reading pmtoggle), but I am in the process of combining both of them into one, due to how identical the logic for applying presets are. Edit the executables to change the thresholds for applying presets, as well as what commands to actually run in the preset. Default power management backend uses tuned, but you can replace this with system76-power, ppd, etc. Additionally, you can temporarily block this script from applying changes by creating a file named ```dynamic-profiler-lock``` in /tmp. Once this file is removed, the script will resume applying power management changes.
+  - Note, you can set what commands to run when you hit the thresholds for performance, balanced, and power using the conf file provided. It is meant to be placed at /etc/, but you can tell dynamic-profiler / dynamic-profiler-ctrl to look for it elsewhere.
 
-  - Note, dynamic-profiler does what powerpm does, except it has a few seconds of delay and applies dynamic power management. While you can use both at the same time, powerpm is technically not needed to run dynamic-profiler anymore.
+  - dynamic-profiler-ctrl is meant to be a cli interface fulfilling the same purpose as power-profiles-ctrl or tuned-adm. The output is in fact inspired by ppd, but it shows what settings dynamic-profiler is currently using.
+
+  - For more detailed information on using dynamic-profiler / dynamic-profiler-ctrl, go to the folder's README.
 
 # installation and requirements
 
