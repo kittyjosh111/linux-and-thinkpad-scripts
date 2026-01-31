@@ -10,34 +10,33 @@ CONFIG_FILE="/etc/dynamic-profiler.conf"
 # define the "profile" functions
 
 power () {
-  touch /tmp/dynamic-profiler-lock 2> /dev/null
-  echo "power" | tee /tmp/dynamic-profiler-manual > /dev/null
+  touch /tmp/dynamic-profiler-lock-governor 2> /dev/null
+  echo "power" | tee /tmp/dynamic-profiler-manual-governor-governor > /dev/null
 }
 
 balanced () {
-  touch /tmp/dynamic-profiler-lock 2> /dev/null
-  echo "balanced" | tee /tmp/dynamic-profiler-manual > /dev/null
+  touch /tmp/dynamic-profiler-lock-governor 2> /dev/null
+  echo "balanced" | tee /tmp/dynamic-profiler-manual-governor > /dev/null
 }
 
 performance () {
-  touch /tmp/dynamic-profiler-lock 2> /dev/null
-  echo "performance" | tee /tmp/dynamic-profiler-manual > /dev/null
+  touch /tmp/dynamic-profiler-lock-governor 2> /dev/null
+  echo "performance" | tee /tmp/dynamic-profiler-manual-governor > /dev/null
 }
 
 reset () {
-  rm /tmp/dynamic-profiler-lock 2> /dev/null
-  rm /tmp/dynamic-profiler-manual 2> /dev/null
-  rm /tmp/dynamic-profiler-turbo* 2> /dev/null
+  rm /tmp/dynamic-profiler-lock* 2> /dev/null
+  rm /tmp/dynamic-profiler-manual-governor* 2> /dev/null
 }
 
 turbo-on () {
-  touch /tmp/dynamic-profiler-turbo-on 2> /dev/null
-  touch /tmp/dynamic-profiler-turbo-lock 2> /dev/null
+  touch /tmp/dynamic-profiler-lock-turbo 2> /dev/null
+  echo "on" | tee /tmp/dynamic-profiler-manual-turbo > /dev/null
 }
 
 turbo-off () {
-  touch /tmp/dynamic-profiler-turbo-off 2> /dev/null
-  touch /tmp/dynamic-profiler-turbo-lock 2> /dev/null
+  touch /tmp/dynamic-profiler-lock-turbo 2> /dev/null
+  echo "off" | tee /tmp/dynamic-profiler-manual-turbo > /dev/null
 }
 
 print-all () {
@@ -52,10 +51,10 @@ print-all () {
     POWER="$BAT_POWER"
   fi
   locks=""
-  if [ -f /tmp/dynamic-profiler-lock ]; then
+  if [ -f /tmp/dynamic-profiler-lock-governor ]; then
     locks+="[NOTICE] dynamic-profiler is currently running in manual mode.\n"
   fi
-  if [ -f /tmp/dynamic-profiler-turbo-lock ]; then
+  if [ -f /tmp/dynamic-profiler-lock-turbo ]; then
     locks+="[NOTICE] Turbo Boost is currently locked.\n"
   fi
   if [ ! -z "$locks" ]; then

@@ -16,19 +16,6 @@ else
   . /etc/dynamic-profiler.conf
 fi
 
-# Script to automatically change power management settings based on system usage.
-# Pre-run checklist
-rm /tmp/dynamic-profiler #reset
-cpupower frequency-set -u 9999999
-eval "$PERFORMANCE" #force maximum performance, fixes problem with sluggish post-suspension
-echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #force maximum...
-
-#precheck tmp file
-if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file
-  echo "No tmp file found. Creating as /tmp/dynamic-profiler..."
-  touch /tmp/dynamic-profiler > /dev/null
-fi
-
 #define functions
 check_tmp () {
   if [[ $(cat /tmp/dynamic-profiler) == "$1" ]]; then
@@ -36,16 +23,24 @@ check_tmp () {
   fi
 }
 
+turbo_on_f () {
+  echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn on boost
+}
+
+turbo_off_f () {
+  echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn on boost
+}
+
 turbo_set () {
   cpu_check="$(echo "$1 > $TURBO_CPU_THRESHOLD" | bc -l)"
   turbo=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
   if [ $cpu_check -eq 1 ]; then
     if [ $turbo == "1" ]; then
-      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn on boost
+      turbo_on_f
     fi
   else
     if [ $turbo == "0" ]; then
-      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null #turn off boost
+      turbo_off_f
     fi
   fi
   turbo=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo) #redefine it for debugger
@@ -82,9 +77,14 @@ power_set () {
 }
 
 debug_log () {
-  if [[ $DEBUG_LOG == 1 ]]; then
-    echo "LOAD DELTA: $int_load_diff, CPU: $cpu, NO_TURBO: $turbo, POWER_LEVEL: $POWER_LEVEL"
+  db_statement="LOAD DELTA: $int_load_diff, CPU: $cpu"
+  if [[ $TURBO_LOCKED != 1 ]]; then
+    db_statement+=", NO_TURBO: $turbo"
   fi
+  if [[ $GOV_LOCKED != 1 ]]; then
+    db_statement+=", POWER_LEVEL: $POWER_LEVEL"
+  fi
+  echo "$db_statement"
 }
 
 profile_set () {
@@ -99,13 +99,27 @@ profile_set () {
   fi
 }
 
+# Script to automatically change power management settings based on system usage.
+# Pre-run checklist
+rm /tmp/dynamic-profiler* #reset
+cpupower frequency-set -u 9999999
+eval "$PERFORMANCE" #force maximum performance, fixes problem with sluggish post-suspension
+turbo_on_f #force maximum...
+
+#precheck tmp file
+if ! [ -f /tmp/dynamic-profiler ]; then #create a tmp file
+  echo "No tmp file found. Creating as /tmp/dynamic-profiler..."
+  touch /tmp/dynamic-profiler > /dev/null
+fi
+
 ## Main loop
 POWER_LEVEL=1 #0 for powersave, +1 to balanced, +1 to perf
-IS_LOCKED=0 #0 for no, 1 for yes
-TURBO_LOCKED=0
+GOV_LOCKED=0 #0 for no, 1 for yes
+TURBO_LOCKED=0 #0 for no, 1 for yes
 PMTOGGLE=5 #sorry, habit from zscripting
 while true
 do
+  ### load in pmtoggle checks as well as config stuff ###
   if [[ $(cat /tmp/pmtoggle) == "1" ]]; then
       if [[ "$PMTOGGLE" != 1 ]]; then
         echo "Connected to AC. Switching to AC mode."
@@ -133,15 +147,17 @@ do
       LOWER_CPU_THRESHOLD="$BAT_LOWER_CPU_THRESHOLD"
       HIGHER_CPU_THRESHOLD="$BAT_HIGHER_CPU_THRESHOLD"
   fi
-  if [ -f /tmp/dynamic-profiler-lock ]; then
-    if [[ "$IS_LOCKED" != "1" ]]; then
-      old_mode="$(cat /tmp/dynamic-profiler)"
-      echo "Lock file found. Waiting for manual instruction."
+
+  ### now sort through governor stuff first ###
+  if [ -f /tmp/dynamic-profiler-lock-governor ]; then
+    if [[ "$GOV_LOCKED" != "1" ]]; then
+      echo "Governor lock file found. Waiting for manual instruction."
       echo "locked" | tee /tmp/dynamic-profiler > /dev/null
-      IS_LOCKED=1
+      GOV_LOCKED=1
     fi
-    if [ -f /tmp/dynamic-profiler-manual ]; then
-      man_sett=$(cat /tmp/dynamic-profiler-manual)
+    #applying manual governors in locked
+    if [ -f /tmp/dynamic-profiler-manual-governor ]; then
+      man_sett=$(cat /tmp/dynamic-profiler-manual-governor)
       if [[ $man_sett == "performance" ]]; then
         $PERFORMANCE
         echo "Performance Mode set manually."
@@ -154,14 +170,13 @@ do
       else
         echo "Unknown manual mode. No action taken."
       fi
-      rm /tmp/dynamic-profiler-manual > /dev/null
+      rm /tmp/dynamic-profiler-manual-governor > /dev/null
       echo "$man_sett" | tee /tmp/dynamic-profiler > /dev/null
     fi
-    sleep $POLL_INTERVAL
   else
-    if [[ "$IS_LOCKED" == "1" ]]; then
-      echo "Lock file removed. Resuming automatic management."
-      IS_LOCKED=0
+    if [[ "$GOV_LOCKED" == "1" ]]; then
+      echo "Governor lock file removed. Resuming automatic management."
+      GOV_LOCKED=0
     fi
     #Get CPU info
     top_get="$(top -bn1 | grep -o -e 'load average.*' -e 'Cpu(s).*')"
@@ -176,7 +191,7 @@ do
     int_load_diff=$(printf "%.*f\n" 0 $load_diff_100) #conversion to int
     load_delta_100=$(echo "$LOAD_DELTA_THRESHOLD*100" | bc) #make sure scale is the same
     int_load_delta=$(printf "%.*f\n" 0 $load_delta_100) #conversion to int
-
+    #logic time
     if [[ $int_load_diff -le $int_load_delta ]] && [[ $int_cpu -le $LOWER_CPU_THRESHOLD ]]; then
       POWER_LEVEL=$(($POWER_LEVEL - 1)) #move up a level if load is too large BUT cpu threshold isn't met
     elif [[ $int_load_diff -le $int_load_delta ]]; then
@@ -189,25 +204,41 @@ do
       true #something unexpected, just stay in place
     fi
     profile_set $POWER_LEVEL
-    if [ -f /tmp/dynamic-profiler-turbo-on ]; then
-      echo "0" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-      echo "Turbo Mode enabled manually."
-      rm /tmp/dynamic-profiler-turbo-on > /dev/null
-      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
-    elif [ -f /tmp/dynamic-profiler-turbo-off ]; then
-      echo "1" | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-      echo "Turbo Mode disabled manually."
-      rm /tmp/dynamic-profiler-turbo-off > /dev/null
-      echo "$old_mode" | tee /tmp/dynamic-profiler > /dev/null
+  fi
+
+  ### then sort through turbo stuff ###
+  if [ -f /tmp/dynamic-profiler-lock-turbo ]; then
+    if [[ "$TURBO_LOCKED" != "1" ]]; then
+      echo "Turbo lock file found. Waiting for manual instruction."
+      echo "locked" | tee /tmp/dynamic-profiler-turbo > /dev/null
+      TURBO_LOCKED=1
     fi
-    if [ ! -f /tmp/dynamic-profiler-turbo-lock ]; then
-      turbo_set $int_cpu
-    else
-      if [[ $DEBUG_LOG == 1 ]]; then
-        echo "Turbo Mode locked."
+    #applying manual turbo in locked
+    if [ -f /tmp/dynamic-profiler-manual-turbo ]; then
+      tur_sett=$(cat /tmp/dynamic-profiler-manual-turbo)
+      if [[ $tur_sett == "on" ]]; then
+        turbo_on_f
+        echo "Turbo Boost manually activated."
+      else
+        turbo_off_f
+        echo "Turbo Boost manually deactivated."
       fi
+      rm /tmp/dynamic-profiler-manual-turbo > /dev/null
     fi
+  else
+    if [[ "$TURBO_LOCKED" == "1" ]]; then
+      echo "Turbo lock file removed. Resuming automatic management."
+      TURBO_LOCKED=0
+    fi
+    turbo_set $int_cpu
+  fi
+
+  ### then debug ###
+  if [[ $DEBUG_LOG == 1 ]]; then
     debug_log
   fi
+
+  ### and sleep time ###
+  sleep $POLL_INTERVAL
 done
 
