@@ -1,38 +1,64 @@
 # dynamic-profiler
 
-This script has 3 parts: the main executable, the config file, and the systemd file. The main script requires pmtoggle to run correctly. While older versions of the script also required powerpm, this is no longer necessary.
+This system is meant to provide a mix between the manual power profiles switching found in common tools such as power-profiles-daemon or system76-power, along with automatic toggling between them based on CPU usage and system load. Hence, its a sort of "dynamic tuning" or "dynamic profiler".
 
-Based on your CPU usage and system load (measured every 4 seconds), the main executable will decide whether to apply a Performance, Balanced, or Power preset. Turbo Boost is also applied based on CPU usage.
+```dynamic-profiler``` really only needs three parts to work correctly: The ```dynamic-profiler``` script and ```dynamic-profiler.conf``` configuration file in this repository, along with the ```pmtoggle``` system found in the parent folder [here](https://github.com/kittyjosh111/linux-and-thinkpad-scripts/tree/main/power-management/powerpm-suite/pmtoggle). All the other files (systemd services, ```dynamic-profiler-ctrl```, etc.) are optional to the core functionality of ```dynamic-profiler``` and are meant as QOL scripts.
+
+It is important to note that ```dynamic-profiler``` does NOT replace your standard power profile manager, rather it tells that manager how to change between profiles automatically. As such, you SHOULD NOT mask or disable your power profile manager (tuned, ppd, system76-power, etc.). You will in fact be required to find the commands to make your power profile manager switch between profiles in order to fill out the configuration file.
+
+Also, this script is meant to be used on Intel CPUs that support turbo boost. If your CPU doesn't support this (low-end / AMD CPUs), you can try to edit ```dynamic-profiler``` to skip over the turbo boost section. That would probably mean deleting the second part of the while loop at the end of the script.
 
 ## install
 
-1. Install pmtoggle from this repo.
+1. Install pmtoggle from this repo. It was in the parent folder of this directory.
 
-2. Copy dynamic-profiler to /usr/local/bin/. Make sure it is executable.
+2. Copy ```dynamic-profiler``` and ```dynamic-profiler-ctrl``` to /usr/local/bin/ or wherever you store executables. Make sure they have executable permissions. Technically, using ```dynamic-profiler-ctrl``` is optional, as it is meant for monitoring and manual usage.
 
-3. Copy dynamic-profiler.conf to /etc/. If you don't want to do that and instead keep the config somewhere else, you need to pass in the file's new location to the main executable (dynamic-profiler).
+3. Copy dynamic-profiler.conf to /etc/. If you don't want to do that and instead keep the config somewhere else, you need to pass in the file's new location to ```dynamic-profiler``` and edit the fourth line in ```dynamic-profiler-ctrl```. Just put in the path to the config file when starting ```dynamic-profiler```.
 
-4. Edit the conf file. There are descriptions of what each variable means inside the conf file. All values are required to be filled.
+4. Edit the conf file. There are descriptions of what each variable means inside the conf file. All values are required to be filled. Defaults were tested on an X1 Yoga Gen 3.
 
-5. Copy the systemd files to /etc/systemd/system/ if you want to use systemd. Enable them and start them.
+5. Copy the systemd files to /etc/systemd/system/ if you want to use systemd. Enable and start them.
 
-## manual control
+## manual control via ```dynamic-profiler-ctrl```
 
-to temporarily disable and manually control dynamic-profiler, follow these steps:
+Despite its name, ```dynamic-profiler``` can be run in manual mode, giving you the option to specify which profile / turbo boost setting to use, much like how powerprofilesctl does.
 
-0) Determine if you want to lock only the profile-switching or the turbo-boost toggling. If you want to lock only profile-switching, follow step 1-2. If you want to lock only the turbo boost status, follow step 3. You can combine the steps if you want to lock both at the same time.
+If you want a nice CLI interface to control manual mode, you can simply use ```dynamic-profiler-ctrl``` to issue commands.
 
-1) Lock dynamic-profiler. Do this by creating a file ```/tmp/dynamic-profiler-lock```. The filename must match that exactly. You can use command ```touch /tmp/dynamic-profiler-lock```.
+```The following arguments are recognized by dynamic-profiler-ctrl:
+  -p | --profile | profile [VALUE]:
+    Manually activate a profile. Accepted values are performance, balanced, or power.
+    Leave blank to view dynamic-profiler stats.  
+  -t | --turbo | turbo [VALUE]:
+    Manually activate/deactivate turbo boost. Accepted values are on or off.
+  -r | --reset | reset :
+    Resets dynamic-profiler to automatic control.
+```
 
-2) To control power governor by calling whichever commands you've set in the config file, create a file ```/tmp/dynamic-profier-manual``` and write the word "performance", "balanced", or "power" in it. You can do this for example with ```echo "performance" | tee /tmp/dynamic-profiler/manual```
+The outputs and usage of this command are meant to be inspired by the outputs/usage of powerprofilesctl and tuned-adm.
 
-3) To control turbo boost manually, first create ```/tmp/dynamic-profiler-turbo-lock```. Then create either ```/tmp/dynamic-profiler-turbo-on``` to turn it on, or ```/tmp/dynamic-profiler-turbo-off```. You can use the touch command again.
+So for example, if you want to lock dynamic-profiler to powersave and turn on turbo boost, you would issue the following command: ```dynamic-profiler-ctrl -p powersave -t on```.
 
-4) To disable manual control and return to automatic management, remove the lock files you created. So, either ```rm /tmp/dynamic-profiler-lock``` or ```rm /tmp/dynamic-profiler-turbo-lock``` or both.
+However, you are not required to use ```dynamic-profiler-ctrl``` for manual mode. In fact, that script is merely a fancy wrapper to write files into /tmp/ that ultimately control ```dynamic-profiler```. If you want to control manual mode "manually", here is how that works:
 
-## manual control with dynamic-profiler-ctrl
+1. Determine if you want to lock profile-switching to one profile, and/or if you want to toggle turbo boost on or off.
 
-its just a script that can do the above steps, as well as give a update of which profile dynamic-profiler is on. The text and use of this tool is inspired by both ppd and tuned-adm. Use the ```-h``` flag for help.
+ - To lock and manually control the power profile:
+
+  - First create a "lock file" that prevents the script from switching between profiles. To do so, execute this command: ```touch /tmp/dynamic-profiler-lock-governor```.
+
+  - Then, create a file that explicitly tells the script which profile to use. To do so, create a file called "/tmp/dynamic-profiler-manual-governor" that has the name of the profile inside it. As a reminder, profile names are "performance", "balanced", or "powersave". Thus, if you want to manually set performance mode, you would execute this command: ```echo "performance" | tee /tmp/dynamic-profiler-manual-governor```. Remember to change "performance" to the profile name you want.
+
+ - The steps to manually control turbo boost are almost the same:
+
+  - First create a "lock file" that prevents the script from toggling turbo boost. To do so, execute this command: ```touch /tmp/dynamic-profiler-lock-turbo```.
+
+  - Then, create a file that explicitly tells the script whether to turn on or off turbo boost. To do so, create a file called "/tmp/dynamic-profiler-manual-turbo" that has either "on" or "off" as its contents. For example: ```echo "on" | tee /tmp/dynamic-profiler-manual-turbo``` turns on turbo boost, but remember to change "on" as needed.
+
+2. To disable manual control and return to automatic management, remove any lock or manual files you created. So, either ```rm /tmp/dynamic-profiler-lock*``` or ```rm /tmp/dynamic-profiler-manual*``` or both.
+
+If you need to see examples of these commands, you can actually read the contents of ```dynamic-profiler-ctrl```, as that's what is going on beneath the hood.
 
 ## more details
 
