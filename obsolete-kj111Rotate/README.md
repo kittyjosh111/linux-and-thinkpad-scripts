@@ -1,3 +1,5 @@
+## Note, on newer kernels I do not believe this is an issue any longer. This script will be kept here as an archive
+
 # install:
 
 - Install ```evtest```, ```notify-send''', and ```inotify-tools``` with your package manager.
