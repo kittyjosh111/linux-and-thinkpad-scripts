@@ -27,8 +27,8 @@ function toggler() {
 }
 
 #then, figure out AC status and assign a value to tmp file
-AC=$(acpi -V | grep "off-line")
-if [ ! -z "$AC" ];then
+AC=$(cat /sys/class/power_supply/*/online | grep 1)
+if [ -z "$AC" ];then
     toggler 0 #offline
 else
     toggler 1 #online
