@@ -11,7 +11,7 @@ CONFIG_FILE="/etc/dynamic-profiler.conf"
 
 power () {
   touch /tmp/dynamic-profiler-lock-governor 2> /dev/null
-  echo "power" | tee /tmp/dynamic-profiler-manual-governor-governor > /dev/null
+  echo "power" | tee /tmp/dynamic-profiler-manual-governor > /dev/null
 }
 
 balanced () {

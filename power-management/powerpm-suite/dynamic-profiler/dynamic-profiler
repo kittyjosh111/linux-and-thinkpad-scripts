@@ -148,7 +148,34 @@ do
       HIGHER_CPU_THRESHOLD="$BAT_HIGHER_CPU_THRESHOLD"
   fi
 
-  ### now sort through governor stuff first ###
+  ### then sort through turbo stuff ###
+  if [ -f /tmp/dynamic-profiler-lock-turbo ]; then
+    if [[ "$TURBO_LOCKED" != "1" ]]; then
+      echo "Turbo lock file found. Waiting for manual instruction."
+      echo "locked" | tee /tmp/dynamic-profiler-turbo > /dev/null
+      TURBO_LOCKED=1
+    fi
+    #applying manual turbo in locked
+    if [ -f /tmp/dynamic-profiler-manual-turbo ]; then
+      tur_sett=$(cat /tmp/dynamic-profiler-manual-turbo)
+      if [[ $tur_sett == "on" ]]; then
+        turbo_on_f
+        echo "Turbo Boost manually activated."
+      else
+        turbo_off_f
+        echo "Turbo Boost manually deactivated."
+      fi
+      rm /tmp/dynamic-profiler-manual-turbo > /dev/null
+    fi
+  else
+    if [[ "$TURBO_LOCKED" == "1" ]]; then
+      echo "Turbo lock file removed. Resuming automatic management."
+      TURBO_LOCKED=0
+    fi
+    turbo_set $int_cpu
+  fi
+
+  ### now sort through governor stuff ###
   if [ -f /tmp/dynamic-profiler-lock-governor ]; then
     if [[ "$GOV_LOCKED" != "1" ]]; then
       echo "Governor lock file found. Waiting for manual instruction."
@@ -203,39 +230,17 @@ do
     else
       true #something unexpected, just stay in place
     fi
+    if [ $POWER_LEVEL -lt 0 ]; then 
+      POWER_LEVEL=0; 
+    elif [ $POWER_LEVEL -gt 2 ]; then 
+      POWER_LEVEL=2
+    fi
     profile_set $POWER_LEVEL
-  fi
 
-  ### then sort through turbo stuff ###
-  if [ -f /tmp/dynamic-profiler-lock-turbo ]; then
-    if [[ "$TURBO_LOCKED" != "1" ]]; then
-      echo "Turbo lock file found. Waiting for manual instruction."
-      echo "locked" | tee /tmp/dynamic-profiler-turbo > /dev/null
-      TURBO_LOCKED=1
+    ### then debug ###
+    if [[ $DEBUG_LOG == 1 ]]; then
+      debug_log
     fi
-    #applying manual turbo in locked
-    if [ -f /tmp/dynamic-profiler-manual-turbo ]; then
-      tur_sett=$(cat /tmp/dynamic-profiler-manual-turbo)
-      if [[ $tur_sett == "on" ]]; then
-        turbo_on_f
-        echo "Turbo Boost manually activated."
-      else
-        turbo_off_f
-        echo "Turbo Boost manually deactivated."
-      fi
-      rm /tmp/dynamic-profiler-manual-turbo > /dev/null
-    fi
-  else
-    if [[ "$TURBO_LOCKED" == "1" ]]; then
-      echo "Turbo lock file removed. Resuming automatic management."
-      TURBO_LOCKED=0
-    fi
-    turbo_set $int_cpu
-  fi
-
-  ### then debug ###
-  if [[ $DEBUG_LOG == 1 ]]; then
-    debug_log
   fi
 
   ### and sleep time ###
