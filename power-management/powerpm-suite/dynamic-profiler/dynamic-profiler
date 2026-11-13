@@ -32,7 +32,11 @@ turbo_off_f () {
 }
 
 turbo_set () {
-  cpu_check="$(echo "$1 > $TURBO_CPU_THRESHOLD" | bc -l)"
+  if [ -z $1 ]; then
+    cpu_check=0
+  else
+    cpu_check="$(echo "$1 > $TURBO_CPU_THRESHOLD" | bc -l)"
+  fi
   turbo=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo)
   if [ $cpu_check -eq 1 ]; then
     if [ $turbo == "1" ]; then
@@ -246,4 +250,3 @@ do
   ### and sleep time ###
   sleep $POLL_INTERVAL
 done
-

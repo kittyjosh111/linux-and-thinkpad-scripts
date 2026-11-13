@@ -1,0 +1,159 @@
+#!/bin/bash
+
+FORCE_PW=0
+
+#determine whether we have any audio out
+this_active=false
+out_device="$(grep -rn RUNNING /proc/asound/card*/pcm*p/sub*/status)" #alsa first
+if [[ -z "$out_device" || "$FORCE_PW" != "0" ]]; then # if no alsa, or force pw
+  out_device="$(wpctl inspect @DEFAULT_AUDIO_SINK@)" #get wpctl details from default sink
+  while IFS= read -r line; do
+    case "$line" in
+      id\ *)
+        this_id="${line#id }"
+        this_id="${this_id%%,*}" #extract the ID
+        ;;
+    esac
+  done <<< "$out_device"
+  this_info="$(pw-dump $this_id)" #save for later
+  if [ -z "$(echo $this_info | grep suspended)" ]; then
+    this_active=true #we do not find suspended, this source is active
+    this_driver="PipeWire"
+  fi
+else
+  this_active=true #we got alsa running somewhere
+  this_driver="ALSA"
+fi #if we never found 'running' in alsa, its not on
+
+if [[ $this_driver == "ALSA" ]]; then #alsa sniffing first
+  out_device="${out_device%pcm*}"
+  this_info="$(cat "$out_device"pcm*p/sub*/hw_params)"
+  while IFS= read -r line; do
+    case "$line" in
+      rate:*)
+        this_rate="${line#rate: }"
+        this_rate="${this_rate%% *}"
+        ;;
+      format:*)
+        this_format="${line#format: }"
+        ;;
+    esac
+  done <<< "$this_info"
+else #pw time or ig its a fallback
+  this_json="$(echo "$this_info" | jq -r '.[] |
+    select(.type == "PipeWire:Interface:Node") |
+    .info.params.Format[0].rate,
+    .info.params.Format[0].format
+    ')"
+  readarray -t this_array <<< $this_json
+  this_rate="${this_array[0]}"
+  this_format="${this_array[1]}"
+fi
+
+simple_display(){
+  if [[ $this_active == "false" ]]; then
+    echo "no playback" #thats it
+  else
+    echo -e "$this_format / $(( $this_rate / 1000 ))kHz"
+  fi
+}
+
+get_stats(){
+  if [[ $this_active == "false" ]]; then
+    echo "no active playback found"
+  else
+    if [[ $this_driver == "ALSA" ]]; then #alsa sniffing first
+      alsa_card="${out_device#*/card}"
+      alsa_card="${alsa_card%%/*}"
+      this_card="$(grep -A1 "^ *$alsa_card " /proc/asound/cards)"
+      #extract name of device
+      this_dev="${this_card#*$'\n'}"
+      this_desc="${this_dev%% at *}"
+      this_desc="${this_desc//[[:space:]]/}"
+      #extract connection of device
+      this_connect="${this_dev#* at }"
+      this_connect="${this_connect//[[:space:]]/}"
+      #extract kernel driver
+      this_access="${this_card%%$'\n'*}"
+      this_access="${this_access##*]: }"
+      this_access="${this_access%% - *}"
+      this_access="${this_access//[[:space:]]/}"
+      #get volume stuff
+      this_amixer="$(amixer get Master)"
+      this_sum=0
+      this_count=0
+      while IFS= read -r line; do
+        case "$line" in
+          *\[off\]*)
+            vol_text="muted"
+            ;;
+          *\[on\]*)
+            this_extract="${line#*\[}"
+            this_extract="${this_extract%%\%\]*}"
+            this_sum=$((this_sum + this_extract))
+            this_count=$((this_count + 1))
+            ;;
+        esac
+      done <<< "$this_amixer"
+      if [ "$this_count" != "0" ]; then
+        vol_text=$(( $this_sum / $this_count ))"%"
+      fi
+      echo "Selected Audio Output:"
+      echo "- Device Description: $this_desc"
+      echo "- Sink Connection: $this_connect"
+      echo "- Average Software Channel Volume: $vol_text"
+      echo "Hardware Sink Status:"
+      echo "- $this_driver Kernel Driver: $this_access"
+      echo "- $this_driver Audio Format: $this_format"
+      echo "- $this_driver Audio Sample Rate: $this_rate Hz"
+    else #pw as the fallback
+      this_json2="$(echo "$this_info" | jq -r '.[] |
+        select(.type == "PipeWire:Interface:Node") |
+        .info.props["node.description"],
+        .info.props["node.name"],
+        .info.props["device.api"],
+        (.info.params.Props[0].channelVolumes | map(cbrt * 100) | (add / length) | round),
+        .info.params.Props[0].mute,
+        .info.props["factory.name"]
+      ')"
+      readarray -t this_array2 <<< $this_json2
+      this_desc="${this_array2[0]}"
+      this_connection="${this_array2[1]}"
+      this_api="${this_array2[2]}"
+      this_avgcv="${this_array2[3]}"
+      this_mute="${this_array2[4]}"
+      this_factory="${this_array2[5]}"
+      if [ "$this_mute" == "false" ]; then
+        vol_text=$this_avgcv"%"
+      else
+        vol_text="muted"
+      fi
+      echo "Selected Audio Output:"
+      echo "- Device Description: $this_desc"
+      echo "- Sink Name: $this_connection"
+      echo "- Average Software Channel Volume: $vol_text"
+      echo "Hardware Sink Status:"
+      echo "- $this_driver Audio API: $this_api ($this_factory)"
+      echo "- $this_driver Audio Format: $this_format"
+      echo "- $this_driver Audio Sample Rate: $this_rate Hz"
+    fi
+  fi
+}
+
+if [ $# -eq 0 ]; then
+  simple_display
+fi
+
+while getopts "v" opt; do
+  case ${opt} in
+    v )
+      get_stats
+      ;;
+    * )
+      echo "Usage: -v to print out detailed audio stats"
+      exit 1
+      ;;
+  esac
+done
+
+

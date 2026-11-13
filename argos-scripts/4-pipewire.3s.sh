@@ -5,7 +5,7 @@ argos_font=11
 header_font=13
 this_toggle=0
 
-poll="$(pw-top -b -n 2 | grep output | awk '$3 != 0')" #current audio output
+poll="$(pw-top -b -n 1 | grep output | awk '$3 != 0')" #current audio output
 
 if [ -n "$poll" ]; then
   this_toggle=1
