@@ -69,15 +69,13 @@ get_stats(){
       #extract name of device
       this_dev="${this_card#*$'\n'}"
       this_desc="${this_dev%% at *}"
-      this_desc="${this_desc//[[:space:]]/}"
+      this_desc="$(echo $this_desc | xargs)"
       #extract connection of device
       this_connect="${this_dev#* at }"
-      this_connect="${this_connect//[[:space:]]/}"
       #extract kernel driver
       this_access="${this_card%%$'\n'*}"
       this_access="${this_access##*]: }"
       this_access="${this_access%% - *}"
-      this_access="${this_access//[[:space:]]/}"
       #get volume stuff
       this_amixer="$(amixer get Master)"
       this_sum=0
@@ -103,7 +101,7 @@ get_stats(){
       echo "- Sink Connection: $this_connect"
       echo "- Average Software Channel Volume: $vol_text"
       echo "Hardware Sink Status:"
-      echo "- $this_driver Kernel Driver: $this_access"
+      echo "- $this_driver Kernel Driver: $this_access (hw:$alsa_card)"
       echo "- $this_driver Audio Format: $this_format"
       echo "- $this_driver Audio Sample Rate: $this_rate Hz"
     else #pw as the fallback
