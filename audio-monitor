@@ -96,11 +96,11 @@ get_stats(){
       if [ "$this_count" != "0" ]; then
         vol_text=$(( $this_sum / $this_count ))"%"
       fi
-      echo "Selected Audio Output:"
+      echo "🎧︎ Selected Audio Output:"
       echo "- Device Description: $this_desc"
       echo "- Sink Connection: $this_connect"
       echo "- Average Software Channel Volume: $vol_text"
-      echo "Hardware Sink Status:"
+      echo "⚙︎ Hardware Sink Status:"
       echo "- $this_driver Kernel Driver: $this_access (hw:$alsa_card)"
       echo "- $this_driver Audio Format: $this_format"
       echo "- $this_driver Audio Sample Rate: $this_rate Hz"
@@ -126,11 +126,11 @@ get_stats(){
       else
         vol_text="muted"
       fi
-      echo "Selected Audio Output:"
+      echo "🎧︎ Selected Audio Output:"
       echo "- Device Description: $this_desc"
       echo "- Sink Name: $this_connection"
       echo "- Average Software Channel Volume: $vol_text"
-      echo "Hardware Sink Status:"
+      echo "⚙︎ Hardware Sink Status:"
       echo "- $this_driver Audio API: $this_api ($this_factory)"
       echo "- $this_driver Audio Format: $this_format"
       echo "- $this_driver Audio Sample Rate: $this_rate Hz"
