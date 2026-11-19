@@ -1,0 +1,143 @@
+#!/bin/bash
+
+debug_mode=0
+enforce_volume=0
+last_rate=-1 #keep this number a non-zero or non-rate number. negatives work nicely
+
+get_rates() {
+  #looks through pactl stuff, extract all seen stream rates
+  these_rates=""
+  this_pactl="$(pactl list sink-inputs)"
+  while IFS= read -r line; do
+    case "$line" in
+      *"Sample Specification:"*)
+        this_rate="${line##* }"
+        this_rate="${this_rate%Hz}"
+        these_rates+="$this_rate "
+      ;;
+    esac
+  done <<< "$this_pactl"
+  if [[ "$debug_mode" != 0 ]]; then
+    echo "[get_rates]: All playing rates = $these_rates"
+  fi
+}
+
+get_max_rate() {
+  #using vars set by get_rates, extract the highest one
+  get_rates
+  max_rate=0
+  for each in $these_rates; do
+    if (( each > max_rate )); then
+      max_rate=$each
+    fi
+  done
+  if [[ "$debug_mode" != 0 ]]; then
+    echo "[get_max_rate]: Max playing rate = $max_rate"
+  fi
+}
+
+pw_reset() {
+  #give back auto control
+  pw-metadata -n settings 0 clock.force-rate 0 >/dev/null 2>&1
+  echo "*[pw_reset]*: pw-metadata reset"
+}
+
+pw_set() {
+  #using get_max_rate, set the highest one with pw-metadata
+  pw-metadata -n settings 0 clock.force-rate $max_rate >/dev/null 2>&1
+  echo "*[pw_set]*: $max_rate set via pw-metadata"
+}
+
+main() {
+  #the main logic, first we ensure that the device is not bluetooth or something
+  if get_alsa_device; then
+    get_max_rate
+    if [[ "$debug_mode" != 0 ]]; then
+      echo "[main]: max_rate = $max_rate, last_rate = $last_rate"
+    fi
+    if [ "$max_rate" -ne "$last_rate" ]; then #now, we only do changes when we have to
+      if [ "$max_rate" -eq 0 ]; then
+        pw_reset #somehow if we get no audio
+      else
+        pw_set #otherwise just force it out
+      fi
+    fi
+    last_rate=$max_rate #dependent on what WE saw, NOT what device actually sets
+  fi
+}
+
+get_default_device() {
+  #use wpctl to get the ID of the current default sink
+  out_device="$(wpctl inspect @DEFAULT_AUDIO_SINK@)" #get wpctl details from default sink
+  while IFS= read -r line; do
+    case "$line" in
+      id\ *)
+        this_id="${line#id }"
+        this_id="${this_id%%,*}" #extract the ID
+      ;;
+    esac
+  done <<< "$out_device"
+}
+
+get_alsa_device() {
+  #we then look for the alsa details from wpctl
+  get_default_device
+  this_wp="$(wpctl inspect "$this_id")" #and dump out stuff, we are looking at alsa ids
+  while IFS= read -r line; do
+    case "$line" in
+      *alsa.card\ =*)
+        this_card="${line#*= }"
+        this_card="${this_card//\"/}"
+      ;;
+      *alsa.device\ =*)
+        this_device="${line#*= }"
+        this_device="${this_device//\"/}"
+      ;;
+    esac
+  done <<< "$this_wp"
+  this_alsa="hw:$this_card,$this_device"
+  if [ $this_alsa == "hw:," ]; then
+    if [[ "$debug_mode" != 0 ]]; then
+      echo "[get_alsa_details]: failed to get alsa device"
+    fi
+    echo "current sink does not support bit-perfect audio"
+    return 1 #could be unrecognized or bluetooth devices
+  fi
+}
+
+#=========================================================#
+
+#first get flags
+while getopts "dvh" opt; do
+  case "$opt" in
+    d)
+      debug_mode=1
+    ;;
+    v)
+      enforce_volume=1
+    ;;
+    h)
+      echo "The following arguments are recognized:"
+      echo "  -d    Prints debug messages to console"
+      echo "  -v    Forces 100% Volume on each rate-check"
+      echo "  -h    Shows this help message"
+      exit 1
+    ;;
+    *)
+      echo "Unidentified argument found. Use -h flag for help."
+      exit 1
+    ;;
+  esac
+done
+pw_reset #clear anything in case
+main #now we set one out (might duplicate the rest)
+(dbus-monitor --session "path='/org/mpris/MediaPlayer2'" 2>&1 & pactl subscribe 2>&1 & wait) | while IFS= read -r event; do #and then start the monitor
+  case "$event" in
+    *"Metadata"*|*"Event 'new' on sink-input"*|*"Event 'remove' on sink-input"*) #metadata sees play/pause and track changes; Event tracks addition and release of pw stream
+      if [[ "$debug_mode" != 0 ]]; then
+        echo "[monitor]: $event"
+      fi
+      main
+    ;;
+  esac
+done
