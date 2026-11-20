@@ -63,6 +63,8 @@ main() {
       fi
     fi
     last_rate=$max_rate #dependent on what WE saw, NOT what device actually sets
+  else
+    echo "*[main]*: current audio output device does not support bit-perfect audio"
   fi
 }
 
@@ -98,9 +100,8 @@ get_alsa_device() {
   this_alsa="hw:$this_card,$this_device"
   if [ $this_alsa == "hw:," ]; then
     if [[ "$debug_mode" != 0 ]]; then
-      echo "[get_alsa_details]: failed to get alsa device"
+      echo "[get_alsa_details]: failed to get valid alsa device"
     fi
-    echo "current sink does not support bit-perfect audio"
     return 1 #could be unrecognized or bluetooth devices
   fi
 }
