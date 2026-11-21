@@ -1,0 +1,7 @@
+[Unit]
+Description=launcher for pw-rate-set service             
+[Service]
+Type=simple  
+ExecStart=/usr/local/bin/pw-rate-set
+[Install]
+WantedBy=default.target
